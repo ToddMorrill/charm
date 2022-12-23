@@ -130,3 +130,12 @@ dmypy.json
 
 .DS_Store
 *literature*
+
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.run.xml
+*.synctex.gz
