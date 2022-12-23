@@ -139,3 +139,4 @@ dmypy.json
 *.fls
 *.run.xml
 *.synctex.gz
+*.out
