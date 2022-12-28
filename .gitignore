@@ -140,3 +140,7 @@ dmypy.json
 *.run.xml
 *.synctex.gz
 *.out
+credentials.json
+token.json
+*.csv
+ccu-619.png
