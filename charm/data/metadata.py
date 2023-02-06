@@ -112,7 +112,7 @@ def main(args):
         '.mp4.ldcc': 'video',
         '.ltf.xml': 'text',
         '.psm.xml': 'text',
-        '.flac.ldcc': 'text'
+        '.flac.ldcc': 'audio'
     }
     meta_df['modality'] = meta_df['data_type'].apply(lambda x: modalities[x])
 
