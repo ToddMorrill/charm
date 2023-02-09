@@ -107,14 +107,7 @@ def main(args):
     release_dfs = utils.load_release_metadata(args.raw_data_dir)
     meta_df = pd.concat(release_dfs, ignore_index=True)
     data_checks(meta_df)
-    # add in easy to understand data types
-    modalities = {
-        '.mp4.ldcc': 'video',
-        '.ltf.xml': 'text',
-        '.psm.xml': 'text',
-        '.flac.ldcc': 'audio'
-    }
-    meta_df['modality'] = meta_df['data_type'].apply(lambda x: modalities[x])
+    meta_df['modality'] = meta_df['data_type'].apply(lambda x: utils.MODALITIES[x])
 
     # load annotation data
     anno_dfs = utils.load_ldc_annotations(args.raw_data_dir)

@@ -8,6 +8,7 @@ Examples:
 """
 import argparse
 from collections import namedtuple
+import multiprocessing
 import os
 import logging
 
@@ -57,6 +58,7 @@ def mapping(system_predictions: list[dict], reference_data: list[dict],
         for reference_y in reference_data:
             if abs(system_x['timestamp'] - reference_y['timestamp']) <= delta:
                 pairs.append((system_x, reference_y))
+
     # sort pairs by decreasing detection score
     pairs = sorted(pairs, key=lambda x: x[0]['llr'], reverse=True)
     # while the pair list is not empty
@@ -69,15 +71,7 @@ def mapping(system_predictions: list[dict], reference_data: list[dict],
         pairs = [pair for pair in pairs if pair[0] != system_x]
         # remove unused pairs for reference_y
         pairs = [pair for pair in pairs if pair[1] != reference_y]
-    return correct_pairs
 
-
-def categorize_pairs(system_predictions: list[dict],
-                     reference_data: list[dict],
-                     correct_pairs: list[(dict, dict)],
-                     threshold: float) -> dict[dict[str, int]]:
-    """Categorizes 1) correct pairs, 2) false positives, and 3) false negatives 
-    as we vary the detection threshold."""
     # get system instances not in correct pairs
     # convert to named tuples to make hashable
     system_misses = []
@@ -100,6 +94,15 @@ def categorize_pairs(system_predictions: list[dict],
         # convert back to dictionary
         reference_misses = [x._asdict() for x in reference_misses]
 
+    return correct_pairs, system_misses, reference_misses
+
+
+def categorize_pairs(correct_pairs: list[(dict, dict)],
+                     system_misses: list[dict],
+                     reference_misses: list[dict],
+                     threshold: float) -> dict[dict[str, int]]:
+    """Categorizes 1) correct pairs, 2) false positives, and 3) false negatives 
+    as we vary the detection threshold."""
     # initialize counts
     counts = {
         'correct': 0,
@@ -125,8 +128,8 @@ def precision(counts: dict[float, dict[str, int]]) -> float:
     """Calculates precision as the number of correct predictions over the number
     of correct predictions and false positives."""
     # TODO: what to do when precision is undefined?
-    if (counts['correct'] + counts['false_positive']) == 0:
-        return 0
+    # if (counts['correct'] + counts['false_positive']) == 0:
+    #     return 0
     return counts['correct'] / (counts['correct'] + counts['false_positive'])
 
 
@@ -220,26 +223,50 @@ def main(args):
             threshold = 100
         else:
             threshold = 10
-        # filter meta_df to only include audio and video files
+        # filter meta_df to only include modality and mini-eval files
         modality_filter = meta_df['modality'] == modality
         release_filter = meta_df['release'] == 'Mini-Eval'
-        file_ids = meta_df[modality_filter & release_filter]['file_uid'].unique()
+        file_ids = meta_df[modality_filter
+                           & release_filter]['file_uid'].unique()
 
         # filter change point (label) df to only include modality files
         modality_df = change_point_df[change_point_df['file_id'].isin(
             file_ids)]
 
+        # map predictions to reference data for each file_id and compute system
+        # misses and reference misses
+        mappings = {}
+        for file_id in modality_df['file_id'].unique():
+            system_dict = system_predictions[file_id].to_dict('records')
+            reference_dict = modality_df[modality_df['file_id'] ==
+                                         file_id].to_dict('records')
+
+            correct_pairs, system_misses, reference_misses = mapping(
+                system_dict, reference_dict, threshold)
+            mappings[file_id] = {
+                'correct_pairs': correct_pairs,
+                'system_misses': system_misses,
+                'reference_misses': reference_misses,
+            }
+        
         # get all unique thresholds across all modality files_ids
         unique_thresholds = set()
+        counter = 0
         for file_id in file_ids:
+            counter += system_predictions[file_id]['llr'].nunique()
             unique_thresholds.update(
                 system_predictions[file_id]['llr'].values.tolist())
+        logging.info(f'"{modality}" modality has {counter} unique thresholds.')
 
         # sort thresholds from highest to lowest
         thresholds = sorted(list(unique_thresholds), reverse=True)
 
+        # # can break thresholds into multiple chunks and compute in parallel
+        # num_cores = multiprocessing.cpu_count()
+        # chunked_thresholds = np.array_split(thresholds, num_cores)
+        # results = Parallel(n_jobs=num_cores)(delayed(compute_precision_recall)(mappings, t) for t in chunked_thresholds)
+        
         # for each threshold, compute the mapping and categorize pairs
-        # TODO: refactor, this is inefficient, we're looping the files for each threshold
         modality_precision_scores, modality_recall_scores = [], []
         for t in tqdm(thresholds):
             threshold_counts = {
@@ -249,26 +276,21 @@ def main(args):
             }
             # map predictions to reference data for each file_id
             for file_id in modality_df['file_id'].unique():
-                system_dict = system_predictions[file_id].to_dict('records')
-                reference_dict = modality_df[modality_df['file_id'] ==
-                                             file_id].to_dict('records')
-
-                correct_pairs = mapping(system_dict, reference_dict, threshold)
-                file_counts = categorize_pairs(system_dict,
-                                                    reference_dict,
-                                                    correct_pairs, t)
+                file_counts = categorize_pairs(correct_pairs, system_misses, reference_misses, t)
                 # add file counts to threshold counts
                 for key in threshold_counts:
                     threshold_counts[key] += file_counts[key]
 
-            precision_score, recall_score = precision(threshold_counts), recall(threshold_counts)
+            precision_score = precision(threshold_counts)
+            recall_score = recall(threshold_counts)
             modality_precision_scores.append(precision_score)
             modality_recall_scores.append(recall_score)
 
         # calculate average precision for each modality
         # ap_by_modality[modality] = auc(modality_precision_scores, modality_recall_scores)
         # ap_by_modality[modality] = average_precision(threshold_counts)
-        ap_by_modality[modality] = ap_interp(modality_precision_scores, modality_recall_scores)
+        ap_by_modality[modality] = ap_interp(modality_precision_scores,
+                                             modality_recall_scores)
 
     # print average precision for each modality
     for modality in ap_by_modality:

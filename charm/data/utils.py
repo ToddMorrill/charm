@@ -6,6 +6,14 @@ import json
 
 import pandas as pd
 
+# add in easy to understand data types
+MODALITIES = {
+    '.mp4.ldcc': 'video',
+    '.ltf.xml': 'text',
+    '.psm.xml': 'text',
+    '.flac.ldcc': 'audio'
+}
+
 
 def load_release_metadata(raw_data_dir):
     """Loads metadata related to all available releases stored in

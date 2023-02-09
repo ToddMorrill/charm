@@ -145,3 +145,7 @@ token.json
 *.csv
 ccu-619.png
 *.m4a*
+
+ccu_validation_scoring
+*.mp4*
+M010040RH*

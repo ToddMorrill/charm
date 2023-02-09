@@ -9,3 +9,4 @@ google-auth-httplib2
 google-auth-oauthlib
 -e .
 scikit-learn
+-e ./ccu_validation_scoring
