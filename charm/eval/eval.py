@@ -98,8 +98,7 @@ def mapping(system_predictions: list[dict], reference_data: list[dict],
 
 
 def categorize_pairs(correct_pairs: list[(dict, dict)],
-                     system_misses: list[dict],
-                     reference_misses: list[dict],
+                     system_misses: list[dict], reference_misses: list[dict],
                      threshold: float) -> dict[dict[str, int]]:
     """Categorizes 1) correct pairs, 2) false positives, and 3) false negatives 
     as we vary the detection threshold."""
@@ -218,6 +217,7 @@ def main(args):
     meta_df = pd.read_csv(meta_filepath)
     # calculate average precision for each modality
     ap_by_modality = {}
+    auc_by_modality = {}
     for modality in meta_df['modality'].unique():
         if modality == 'text':
             threshold = 100
@@ -248,11 +248,11 @@ def main(args):
                 'system_misses': system_misses,
                 'reference_misses': reference_misses,
             }
-        
+
         # get all unique thresholds across all modality files_ids
         unique_thresholds = set()
         counter = 0
-        for file_id in file_ids:
+        for file_id in modality_df['file_id'].unique():
             counter += system_predictions[file_id]['llr'].nunique()
             unique_thresholds.update(
                 system_predictions[file_id]['llr'].values.tolist())
@@ -265,7 +265,7 @@ def main(args):
         # num_cores = multiprocessing.cpu_count()
         # chunked_thresholds = np.array_split(thresholds, num_cores)
         # results = Parallel(n_jobs=num_cores)(delayed(compute_precision_recall)(mappings, t) for t in chunked_thresholds)
-        
+
         # for each threshold, compute the mapping and categorize pairs
         modality_precision_scores, modality_recall_scores = [], []
         for t in tqdm(thresholds):
@@ -276,7 +276,8 @@ def main(args):
             }
             # map predictions to reference data for each file_id
             for file_id in modality_df['file_id'].unique():
-                file_counts = categorize_pairs(correct_pairs, system_misses, reference_misses, t)
+                file_counts = categorize_pairs(**mappings[file_id],
+                                               threshold=t)
                 # add file counts to threshold counts
                 for key in threshold_counts:
                     threshold_counts[key] += file_counts[key]
@@ -287,15 +288,18 @@ def main(args):
             modality_recall_scores.append(recall_score)
 
         # calculate average precision for each modality
-        # ap_by_modality[modality] = auc(modality_precision_scores, modality_recall_scores)
         # ap_by_modality[modality] = average_precision(threshold_counts)
         ap_by_modality[modality] = ap_interp(modality_precision_scores,
                                              modality_recall_scores)
+        auc_by_modality[modality] = auc(modality_recall_scores,
+                                        modality_precision_scores)
 
     # print average precision for each modality
     for modality in ap_by_modality:
         print(f'{modality}: {ap_by_modality[modality]:.3f}')
-    breakpoint()
+    # print auc for each modality
+    for modality in auc_by_modality:
+        print(f'{modality}: {auc_by_modality[modality]:.3f}')
 
 
 if __name__ == '__main__':
