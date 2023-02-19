@@ -50,7 +50,7 @@
 # Define a bash function for logging messages with a timestamp
 log() {
     TIMESTAMP=$(date +"%Y-%M-%d %H:%M:%S UTC%:::z")
-    printf "%-27s %-65s %-3s" "${TIMESTAMP}" "$1" "..."  1>&2 ;
+    printf "%-27s %-65s %-3s" "${TIMESTAMP}" "${1}..." 1>&2 ;
 }
 
 # Define required URL variables
@@ -58,68 +58,11 @@ BASE_URL="https://catalog.ldc.upenn.edu"
 LOGIN_URL="https://catalog.ldc.upenn.edu/login"
 DOWNLOADS_URL="https://catalog.ldc.upenn.edu/organization/downloads"
 
-# Define other variables
-COOKIES_FILE="cookies.txt"
-COOKIE_FLAGS="-b ${COOKIES_FILE} -c ${COOKIES_FILE}"
 DOWNLOAD_FILE="corpora.tsv"
 
 
-
-################################################################################
-#                                                                              #
-#                    Prompt user for LDC login credentials                     #
-#                                                                              #
-################################################################################
-
-if [[ ! -f "${COOKIES_FILE}" ]]; then
-
-    log "Enter LDC login credentials"
-    echo
-    echo
-
-    # Prompt user for login information
-    read -p "Enter email address: " EMAIL
-    read -s -p "Enter Password: "   PASSWORD
-    echo
-    echo
-
-fi
-
-
-################################################################################
-#                                                                              #
-#                         Get LDC authenticity token                           #
-#                                                                              #
-################################################################################
-
-log "Accessing LDC login page"
-echo
-
-# Extract authenticity token from LDC login page
-TOKEN=$(curl ${COOKIE_FLAGS} "${LOGIN_URL}" 2> /dev/null | grep -oh '"authenticity_token"\s*value="[^"]*')
-TOKEN=${TOKEN:28}
-
-
-################################################################################
-#                                                                              #
-#                            Log in to LDC account                             #
-#                                                                              #
-################################################################################
-
-log "Logging in to your LDC account"
-
-curl ${COOKIE_FLAGS}                                    \
-    --data-urlencode "utf8=✓"                           \
-    --data-urlencode "authenticity_token=${TOKEN}"      \
-    --data-urlencode "spree_user[login]=${EMAIL}"       \
-    --data-urlencode "spree_user[password]=${PASSWORD}" \
-    --data-urlencode "spree_user[remember_me]=1"        \
-    --data-urlencode "commit=Login"                     \
-    "${LOGIN_URL}" &> /dev/null
-
-echo
-
-
+EMAIL=$1
+PASSWORD=$2
 
 
 ################################################################################
@@ -129,31 +72,9 @@ echo
 ################################################################################
 
 log "Accessing list of your LDC corpora"
-curl ${COOKIE_FLAGS} "${DOWNLOADS_URL}"
 
-curl ${COOKIE_FLAGS} "${DOWNLOADS_URL}"     2> /dev/null    | \
-    grep -v "^\s*$"                                         | \
-    sed 's,\s\s*, ,g'                                       | \
-    sed 's,> <,><,g'                                        | \
-    sed 's,^ ,,'                                            | \
-    sed 's,><,>\n<,g'                                       | \
-    tr -d '\n'                                              | \
-    sed 's,.*<tbody>\(.*\)</tbody>.*,\1,'                   | \
-    sed 's,<tr,\n<tr,g'                                     | \
-    sed 's,<tr[^>]*>,,g'                                    | \
-    sed 's,<td[^>]*>,,g'                                    | \
-    sed 's,<span[^>]*>,,g'                                  | \
-    sed "s,<a [^>]* href='\([^']*\)'[^>]*>,\1,g"            | \
-    sed 's,</[^>]*>,\t,g'                                   | \
-    sed 's,\t\t*,\t,g'                                        \
-    > ${DOWNLOAD_FILE}                                        \
-    2> /dev/null
 
-# Add a trailing newline to the download file
-echo >> ${DOWNLOAD_FILE}
-
-echo
-
+curl -k -L --user "${EMAIL}:${PASSWORD}" "${DOWNLOADS_URL}" > ${DOWNLOAD_FILE} 2> /dev/null
 
 
 ################################################################################
@@ -163,17 +84,15 @@ echo
 ################################################################################
 
 echo
-echo "A list of the LDC corpora associated with your account has been saved to ${DOWNLOAD_FILE}"
+log "A list of the LDC corpora associated with your account has been saved to ${DOWNLOAD_FILE}"
 echo
 
 if [[ "$*" == "" ]]; then
 
-    echo "To download any of these corpora, re-run this script, providing the LDC corpus IDs as command line arguments"
+    log "To download any of these corpora, re-run this script, providing the LDC corpus IDs as command line arguments"
     echo
 
 fi
-
-
 
 ################################################################################
 #                                                                              #
@@ -181,48 +100,43 @@ fi
 #                                                                              #
 ################################################################################
 
-for LDC_CORPUS in "$@" ; do
+for LDC_CORPUS in "${@:3}" ; do
 
     echo
 
-    TSV_LINE=$(grep "${LDC_CORPUS}" ${DOWNLOAD_FILE})
-    CORPUS_URL=$(cut  -f 5 <<< "${TSV_LINE}")
-    CORPUS_NAME=$(cut -f 2 <<< "${TSV_LINE}" | tr ' ' '_')
-    CORPUS_FILE=$(cut -f 6 <<< "${TSV_LINE}" | sed 's,<br/>.*,,; s,.tgz$,,')
+    # this grep is a little hacky, might break but if it does
+    # the assertion on line 113 should fail
+    TSV_LINE=$(grep -A 9 "${LDC_CORPUS}" ${DOWNLOAD_FILE})
+    CORPUS_URLS=($(echo "${TSV_LINE}" | grep "/download/" | sed "s/.*download\/\(.*\)' title='Download Corpus'.*/\1/"))
+    CORPUS_NAMES=($(echo "${TSV_LINE}" | grep "<br/>" | sed 's/\(.*\)<br\/>.*/\1/'))
 
-    LDC_CORPUS_FILENAME="${LDC_CORPUS}__${CORPUS_NAME}__${CORPUS_FILE}.tgz"
-    LDC_CORPUS_LOGNAME="${LDC_CORPUS}__${CORPUS_NAME}__${CORPUS_FILE}.log"
-
-    if   [[ "${CORPUS_URL}" =~ ^/download ]]; then
-
-        log "Downloading ${LDC_CORPUS} from ${BASE_URL}${CORPUS_URL} to \"${LDC_CORPUS_FILENAME}\""
-        echo
-        curl ${COOKIE_FLAGS} "${BASE_URL}${CORPUS_URL}" > "${LDC_CORPUS_FILENAME}" 2> "${LDC_CORPUS_LOGNAME}"
-
-    elif [[ "${CORPUS_URL}" =~ ^http ]]; then
-
-        log "Downloading ${LDC_CORPUS} from ${CORPUS_URL}"
-        echo
-        curl ${COOKIE_FLAGS} "${CORPUS_URL}" > "${LDC_CORPUS_FILENAME}" 2> "${LDC_CORPUS_LOGNAME}"
-
-    else
-
-        log "Not downloading ${LDC_CORPUS}: ${CORPUS_URL}"
-        echo
-
+    if [ "${#CORPUS_URLS[@]}" -ne "${#CORPUS_NAMES[@]}" ]; then
+        log "Found differing #s of download URLs and corpora names for ${LDC_CORPUS}"
+        log "${CORPUS_URLS[@]}"
+        log "${CORPUS_NAMES[@]}"
+        exit 1
     fi
 
+    for i in "${!CORPUS_URLS[@]}"; do
+        log "downloading /download/${CORPUS_URLS[i]} to ${CORPUS_NAMES[i]}.tgz"
 
-    FILE_TYPE=$(file -i -b "${LDC_CORPUS_FILENAME}" | cut -d ';' -f 1)
+        echo
 
-    if [[ "${FILE_TYPE}" == "text/html" ]]; then
+        LDC_CORPUS_FILENAME="${LDC_CORPUS}__${CORPUS_URLS[i]}__${CORPUS_NAMES[i]}.tgz"
 
-	log "Encountered an error downloading ${LDC_CORPUS}. The downloaded file is HTML, but was expected to be .tgz"
-	exit 1
+        DOWNLOAD_URL="/download/${CORPUS_URLS[i]}"
 
-    fi
+        curl -k --user "${EMAIL}:${PASSWORD}" "${BASE_URL}${DOWNLOAD_URL}" > "${LDC_CORPUS_FILENAME}"
 
+        echo
+
+        FILE_TYPE=$(file -i -b "${LDC_CORPUS_FILENAME}" | cut -d ';' -f 1)
+
+        if [[ "${FILE_TYPE}" == "text/html" ]]; then
+        	log "Encountered an error downloading ${LDC_CORPUS_FILENAME}. The downloaded file is HTML, but was expected to be .tgz"
+        	exit 1
+        fi
+    done
 done
 
 echo
-

@@ -226,17 +226,32 @@ def main(args):
         # filter meta_df to only include modality and mini-eval files
         modality_filter = meta_df['modality'] == modality
         release_filter = meta_df['release'] == 'Mini-Eval'
-        file_ids = meta_df[modality_filter
-                           & release_filter]['file_uid'].unique()
+        file_ids = meta_df[modality_filter & release_filter]['file_uid'].unique()
+        # get file_ids from versions_df
+        labeled_file_ids = versions_df[versions_df['changepoint_count'] > 0]['file_id'].unique()
+        file_ids = list(set(file_ids).intersection(set(labeled_file_ids)))
 
-        # filter change point (label) df to only include modality files
-        modality_df = change_point_df[change_point_df['file_id'].isin(
-            file_ids)]
+        # filter change point (label) df to only include labeled modality files
+        modality_df = change_point_df[change_point_df['file_id'].isin(file_ids)]
 
         # map predictions to reference data for each file_id and compute system
         # misses and reference misses
         mappings = {}
-        for file_id in modality_df['file_id'].unique():
+        for file_id in file_ids:
+            # filter system_predictions down to annotated regions
+            # TODO: this can probably be optimized
+            preds_df = system_predictions[file_id]
+            preds_df['start'] = np.nan
+            preds_df['end'] = np.nan
+            segments = segment_df[segment_df['file_id'] == file_id][['start', 'end']]
+            for i, row in preds_df.iterrows():
+                for _, segment in segments.iterrows():
+                    if row['timestamp'] >= segment['start'] and row['timestamp'] <= segment['end']:
+                        preds_df.loc[i, 'start'] = segment['start']
+                        preds_df.loc[i, 'end'] = segment['end']
+                        break
+            preds_df = preds_df[preds_df['start'].notna()]
+            system_predictions[file_id] = preds_df
             system_dict = system_predictions[file_id].to_dict('records')
             reference_dict = modality_df[modality_df['file_id'] ==
                                          file_id].to_dict('records')
@@ -252,7 +267,7 @@ def main(args):
         # get all unique thresholds across all modality files_ids
         unique_thresholds = set()
         counter = 0
-        for file_id in modality_df['file_id'].unique():
+        for file_id in file_ids:
             counter += system_predictions[file_id]['llr'].nunique()
             unique_thresholds.update(
                 system_predictions[file_id]['llr'].values.tolist())
@@ -275,7 +290,7 @@ def main(args):
                 'false_negative': 0,
             }
             # map predictions to reference data for each file_id
-            for file_id in modality_df['file_id'].unique():
+            for file_id in file_ids:
                 file_counts = categorize_pairs(**mappings[file_id],
                                                threshold=t)
                 # add file counts to threshold counts
@@ -295,9 +310,11 @@ def main(args):
                                         modality_precision_scores)
 
     # print average precision for each modality
+    print('LDC Average Precision by Modality')
     for modality in ap_by_modality:
         print(f'{modality}: {ap_by_modality[modality]:.3f}')
     # print auc for each modality
+    print('AUC by Modality')
     for modality in auc_by_modality:
         print(f'{modality}: {auc_by_modality[modality]:.3f}')
 

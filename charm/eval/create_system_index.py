@@ -36,12 +36,13 @@ def main(args):
             f'file_info.tab not found in {os.path.join(data_dir, "docs")}')
     file_info_df = pd.read_csv(os.path.join(data_dir, 'docs/file_info.tab'),
                                sep='\t')
-    breakpoint()
 
     # move a copy of file_info.tab to file_info.tab.bak to have a backup
-    file_info_df.to_csv(os.path.join(data_dir, 'docs/file_info.tab.bak'),
-                        sep='\t',
-                        index=False)
+    # if it doesn't already exist
+    if not os.path.exists(os.path.join(data_dir, 'docs/file_info.tab.bak')):
+        file_info_df.to_csv(os.path.join(data_dir, 'docs/file_info.tab.bak'),
+                            sep='\t',
+                            index=False)
 
     # update file_info.tab with necessary columns
     file_info_df['type'] = file_info_df['data_type'].apply(
@@ -63,10 +64,14 @@ def main(args):
     file_info_df[['file_id', 'type', 'file_path',
                   'length']].to_csv(index_file, sep='\t', index=False)
 
-    # create the scoring index file
+    # create the scoring index file for changepoint
     scoring_index_file = os.path.join(data_dir, 'index_files',
                                       'COMPLETE.scoring.index.tab')
-    file_info_df['file_id'].to_csv(scoring_index_file, sep='\t', index=False)
+    # only keep file_ids labeled for changepoint
+    anno_dfs, segment_df, versions_df = utils.load_ldc_annotation(data_dir)
+    annotated_file_ids = versions_df[versions_df['changepoint_count'] > 0]['file_id'].unique()
+    anno_subset_df = file_info_df[file_info_df['file_id'].isin(annotated_file_ids)]
+    anno_subset_df[['file_id']].to_csv(scoring_index_file, sep='\t', index=False)
 
     # if system_output_dir is provided, create a SUBMISSION.system_input.index.tab
     if args.system_output_dir:
@@ -79,11 +84,10 @@ def main(args):
         # join with file_info_df on file_id
         system_output_df = system_output_df.merge(file_info_df,
                                                   on='file_id',
-                                                  how='left')
+                                                  how='right')
         system_input_file = os.path.join(
             os.path.dirname(index_file), 'SUBMISSION.system_input.index.tab')
-        system_output_df[['file_id', 'type', 'file_path',
-                          'length']].to_csv(system_input_file,
+        system_output_df[['file_id', 'type', 'file_path', 'length']].to_csv(system_input_file,
                                             sep='\t',
                                             index=False)
 

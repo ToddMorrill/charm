@@ -1,10 +1,32 @@
 # charm
 DARPA CHARM project repo
 
+### CCU Library Installation
+```
+export CCU_VERSION=1.1
+export ARTIFACTORY_USERNAME=tm3229
+export ARTIFACTORY_APIKEY=<copy-from-artifactory>
+pip install https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_APIKEY}@artifactory.sri.com/artifactory/cirano-pypi-local/ccu-${CCU_VERSION}-py3-none-any.whl
+```
+
 ### Evaluation
 Verify the correctness of the reference directory:
 ```
-# TODO:
+CCU_scoring validate-ref -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered
+
+# NB: this won't work if the file_ids in system_input.index.tab don't match system_output.index.tab
+CCU_scoring validate-cd -s ~/Documents/data/charm/transformed/predictions/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559 -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered
+
+mkdir -p ~/Documents/data/charm/transformed/scores/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559
+CCU_scoring score-cd -s ~/Documents/data/charm/transformed/predictions/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559 \
+    -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered \
+    -i ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered/index_files/COMPLETE.scoring.index.tab \
+    -o ~/Documents/data/charm/transformed/scores/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559
+```
+
+### Untar submissions
+```
+ls * |xargs -n1 tar -xvf
 ```
 
 ### Stripping LDC headers from .mp4 files
