@@ -1,0 +1,4 @@
+zmq
+numpy
+pyyaml
+requests

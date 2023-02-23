@@ -43,19 +43,31 @@ def create_messages(text_data):
     messages = []
     ctr = 1
     for turn in text_data:
-        message = {
-            "queue": "RESULT",
-            "time_seconds": ctr,
-            "message": {
+        embedded_message = {
                 "type": "asr_result",
                 "uuid": turn.uuid,
                 "start_seconds": turn.start,
                 "end_seconds": turn.end,
                 "asr_text": turn.text,
                 "asr_type": "CONSOLIDATED_RESULT",
-                "datetime": str(datetime.datetime.now())
+                "datetime": str(datetime.datetime.now()),
+                "container_name": "columbia-communication-change",
+                "trigger_id": "NA",
+                "vendor": "OpenAI",
+                "engine": "Whisper",
+                "audio_source": "AUDIO_ENV",
+                "audio_id": "NA",
+                "segment_id": "NA",
+                "asr_json": "NA",
+                "asr_language": "Chinese",
+                "asr_language_code": "zh"
             }
+        message = {
+            "queue": "RESULT",
+            "time_seconds": ctr,
+            "message": embedded_message
         }
+        CCU.check_message(embedded_message)
         messages.append(message)
         ctr += 1
     return messages
@@ -67,8 +79,7 @@ def create_text_objects(segments):
         start = seg['start']
         end = seg['end']
         text = seg['text']
-        uuid = uuid.uuid4()
-        text_objects.append(TextData(str(idx), start, end, text, uuid))
+        text_objects.append(TextData(str(idx), start, end, text, str(uuid.uuid4())))
     return text_objects
 
 def main(args):
@@ -111,29 +122,29 @@ def main(args):
 
         # strip LDC headers
         clean_filepath = strip_ldc_header(input_filepath)
-
-        # generate one audio and one video transcript
+        
+        # generate transcripts
         model = whisper.load_model('large', device='cuda')
-        # breakpoint()
         decode_options = {'language': 'Chinese'}
         result = model.transcribe(clean_filepath, **decode_options)
         write_json(transcript, result)
 
-    # TODO: pick up here
-    doc_name = docs_type + "_" + doc
+    # convert to standardized format
+    for modality in transcripts:
+        transcripts[modality] = create_text_objects(transcripts[modality]['segments'])
+        transcripts[modality] = create_messages(transcripts[modality])
+    
+    transcripts['text'] = create_messages(text_transcript)
 
-    filename = "new_data/{}.jsonl".format(doc_name)
-    with open(filename, 'w') as out:
-        for ddict in messages:
-            jout = json.dumps(ddict) + '\n'
-            out.write(jout)
-
-    filename = "short_data/{}.jsonl".format(doc_name)
-    with open(filename, 'w') as out:
-        for ddict in messages[:60]:
-            jout = json.dumps(ddict) + '\n'
-            out.write(jout)
-
+    file_id_map = {'text': text_file_id, 'video': video_file_id, 'audio': audio_file_id}
+    for modality in transcripts:
+        file_name = f'{modality}_{file_id_map[modality]}.jsonl'
+        filepath = os.path.join('./transcripts', file_name)
+        # write jsonl format
+        with open(filepath, 'w') as out:
+            for message in transcripts[modality]:
+                jout = json.dumps(message, ensure_ascii=False) + '\n'
+                out.write(jout)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -10,3 +10,6 @@ google-auth-oauthlib
 -e .
 scikit-learn
 -e ./ccu_validation_scoring
+fastapi
+uvicorn[standard]
+requests

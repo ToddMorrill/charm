@@ -1,0 +1,6 @@
+zmq
+numpy
+pyyaml
+fastapi
+uvicorn[standard]
+transformers

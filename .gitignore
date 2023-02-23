@@ -153,3 +153,8 @@ M010040RH*
 corpora.tsv
 *.tgz
 *.flac
+netrc
+*.zip
+*.jsonl
+M010009A4.json
+M01000537.json
