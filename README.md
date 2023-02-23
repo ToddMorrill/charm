@@ -22,6 +22,13 @@ CCU_scoring score-cd -s ~/Documents/data/charm/transformed/predictions/CCU_P1_TA
     -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered \
     -i ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered/index_files/COMPLETE.scoring.index.tab \
     -o ~/Documents/data/charm/transformed/scores/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559
+
+# can also evaluate all submissions with
+stdbuf -o0 .charm/eval/eval_submissions.sh ~/Documents/data/charm/transformed/predictions \
+        ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered \
+        ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered/index_files/COMPLETE.scoring.index.tab \
+        ~/Documents/data/charm/transformed/scores
+
 ```
 
 ### Untar submissions

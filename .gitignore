@@ -151,3 +151,5 @@ ccu_validation_scoring
 M010040RH*
 
 corpora.tsv
+*.tgz
+*.flac

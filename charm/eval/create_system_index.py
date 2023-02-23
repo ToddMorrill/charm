@@ -1,20 +1,18 @@
 """This module creates a folder ./index_files/ and the following index files:
-A) ./index_files/<DATASET>.system_input.index.tab that lists all the files
+A) ./index_files/COMPLETE.system_input.index.tab that lists all the files
 present in the ./data folder. This index file has 4 columns:
     1. file_id
     2. type: one of {audio, video, text}
     3. file_path: e.g. ./data/text/1.txt, defaults to .data
     4. length: this is not used by the scoring system and defaults to 1000
 
-B) ./index_files/<DATASET>.scoring.index.tab that lists all the file_ids that
+B) ./index_files/COMPLETE.scoring.index.tab that lists all the file_ids that
 should be scored. This index file has 1 columns:
     1. file_id
 
-Optionally create a system_input file based on a generated system_output file.
 Examples:
     $ python -m charm.eval.create_system_index \
-        --data-dir ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered \
-        --system-output-dir ~/Documents/data/charm/transformed/predictions/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559
+        --data-dir ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered
 """
 import argparse
 import os
@@ -73,27 +71,6 @@ def main(args):
     anno_subset_df = file_info_df[file_info_df['file_id'].isin(annotated_file_ids)]
     anno_subset_df[['file_id']].to_csv(scoring_index_file, sep='\t', index=False)
 
-    # if system_output_dir is provided, create a SUBMISSION.system_input.index.tab
-    if args.system_output_dir:
-        system_output_dir = args.system_output_dir
-        system_output_df = pd.read_csv(os.path.join(system_output_dir,
-                                                    'system_output.index.tab'),
-                                       sep='\t')
-        # drop file_path column to avoid merge conflicts
-        system_output_df.drop(columns=['file_path'], inplace=True)
-        # join with file_info_df on file_id
-        system_output_df = system_output_df.merge(file_info_df,
-                                                  on='file_id',
-                                                  how='right')
-        system_input_file = os.path.join(
-            os.path.dirname(index_file), 'SUBMISSION.system_input.index.tab')
-        system_output_df[['file_id', 'type', 'file_path', 'length']].to_csv(system_input_file,
-                                            sep='\t',
-                                            index=False)
-
-        # if system_output_dir is provided, remove COMPLETE.system_input.index.tab
-        os.remove(index_file)
-
 
 
 if __name__ == '__main__':
@@ -102,10 +79,5 @@ if __name__ == '__main__':
                         help='Directory where the labeled data is stored.',
                         type=str,
                         required=True)
-    parser.add_argument(
-        '--system-output-dir',
-        help='Directory where the system generated predictions are located.',
-        type=str,
-        required=False)
     args = parser.parse_args()
     main(args)
