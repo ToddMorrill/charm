@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  columbia-communication-change-backend:
+    image: 753712517198.dkr.ecr.us-east-1.amazonaws.com/integration/columbia-communication-change-backend:latest
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: 
+                - "0"
+              capabilities: [gpu]
+  columbia-emotions-backend:
+    image: 753712517198.dkr.ecr.us-east-1.amazonaws.com/integration/columbia-emotions-backend:latest
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: 
+                - "1"
+              capabilities: [gpu]
+  columbia-norms-backend:
+    image: 753712517198.dkr.ecr.us-east-1.amazonaws.com/integration/columbia-norms-backend:latest
+    ports:
+      - "8002:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: 
+                - "2"
+              capabilities: [gpu]
+  columbia-vision-backend:
+    image: 753712517198.dkr.ecr.us-east-1.amazonaws.com/integration/columbia-vision-backend:latest
+    ports:
+      - "8003:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: 
+                - "3"
+              capabilities: [gpu]
