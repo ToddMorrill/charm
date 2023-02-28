@@ -1,0 +1,8 @@
+zmq
+numpy
+pyyaml
+fastapi
+uvicorn[standard]
+transformers
+Pillow==9.2.0
+facenet-pytorch==2.5.2

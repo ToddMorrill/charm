@@ -25,7 +25,7 @@ def main():
                         level=logging.DEBUG)
     logging.info('Starting columbia-communication-change')
     if os.environ.get('MODEL_SERVICE') is not None:
-        logging.debug(f'Using {os.environ["MODEL_SERVICE"]} backend.')
+        logging.debug(f'Using {os.environ["MODEL_SERVICE"]}:{os.environ["MODEL_PORT"]} backend.')
 
     asr = CCU.socket(CCU.queues['RESULT'], zmq.SUB)
     result = CCU.socket(CCU.queues['RESULT'], zmq.PUB)
@@ -62,23 +62,24 @@ def main():
 
             da = DialogAct(turn_text, start, end)
 
-            # !!!
-            # TODO: AWS API call will replace this block
-
             # if MODEL_SERVICE environment variable set, then query predict endpoint
             if os.environ.get('MODEL_SERVICE') is not None:
-                data = {'text':[turn_text]}
-                url = f'http://{os.environ["MODEL_SERVICE"]}:8000/predict'
-                response = requests.post(url, json=data)
-                # response format is [{'label': 'positive', 'score': 0.98}, ..., {}]
-                # TODO: response verification
-                result = response.json()
-                logging.debug(result)
-                da.score = result[0]['score']
+                try:
+                    data = {'text':[turn_text]}
+                    url = f'http://{os.environ["MODEL_SERVICE"]}:{os.environ["MODEL_PORT"]}/predict'
+                    response = requests.post(url, json=data)
+                    # response format is [{'label': 'positive', 'score': 0.98}, ..., {}]
+                    # TODO: response verification
+                    json_result = response.json()
+                    logging.debug(json_result)
+                    da.score = json_result[0]['score']
+                except Exception as e:
+                    logging.error(f'API error: {e}')
+                    # randomly generate a confidence score for now to simulate model prediction
+                    da.score = random.random()    
             else:
                 # randomly generate a confidence score for now to simulate model prediction
                 da.score = random.random()
-            # !!!
 
             all_turns.append(da)
 
@@ -95,6 +96,10 @@ def main():
                 cp_message['llr'] = last_cp.llr
                 cp_message['direction'] = last_cp.tone
                 cp_message['container_id'] = "columbia-communication-change"
+                # if speaker field present in the message, copy forward
+                if 'speaker' in message:
+                    cp_message['speaker'] = message['speaker']
+
                 CCU.check_message(cp_message)
                 CCU.send(result, cp_message)
 

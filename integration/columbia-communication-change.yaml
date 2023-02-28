@@ -3,11 +3,18 @@ version: 0.2
 poc:
   email: tm3229@columbia.edu
   name: Todd Morrill
+description: |
+  This container runs a change point detection system that uses a Hugging Face 
+  sentiment classifier. Utterance level of predictions are then grouped into 8
+  segment chunks and the average of the first 4 segment scores are compared to
+  the last 4 segment scores. If these averages differ by a predefined threshold
+  then the system produces a change point. The backend of this system is running
+  on a hosted server with a GPU.
 testingInstructions: |
   There are three test files and accompanying test output files with corresponding names:
-    - text_M01000FLX.jsonl
-    - audio_M01000537.jsonl
-    - video_M010009A4.jsonl
+    - text_M01000FLX.jsonl -> text_M01000FLX_out.jsonl
+    - audio_M01000537.jsonl -> audio_M01000537_out.jsonl
+    - video_M010009A4.jsonl -> video_M010009A4_out.jsonl
 resources:
   - CPU
   - Internet
@@ -18,9 +25,6 @@ outputs:
   - RESULT:
     - change_point
 latency: {add 0.04}
-# Performace is measured on Conversations Gone Awry dataset (equal to SoTA)
-precision: 0.66
-recall: 0.66
 trainingLanguage:
   - zh
 dockerCompose:
@@ -28,3 +32,6 @@ dockerCompose:
   network_mode: "host"
   volumes:
   - "${CCU_SANDBOX}:/sandbox"
+  environment:
+    - MODEL_SERVICE="172.31.16.164"
+    - MODEL_PORT="8000"

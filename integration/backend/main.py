@@ -45,4 +45,10 @@ classifier = pipeline('sentiment-analysis',
 def predict(batch: Batch):
     # TODO: more validation of inputs
     predictions = classifier(batch.text)
-    return predictions
+    # if label == negative, invert the probability
+    final_preds = []
+    for prediction in predictions:
+        final_preds.append(prediction.copy())
+        if prediction['label'] == 'negative':
+            final_preds[-1]['score'] = 1 - prediction['score']
+    return final_preds

@@ -47,11 +47,6 @@ uvicorn main:app --reload
 python query.py
 ```
 
-## Generate output JSONL files
-```
-TODO
-```
-
 ## Running the frontend in Docker
 ```
 # build the front end docker container with
@@ -81,9 +76,10 @@ docker run --gpus all -it --rm -p 8000:8000 --publish-all ${CONTAINER_NAME}
 python query.py
 ```
 
-## Put it all together
+## Put it all together and save output to JSONL
 ```
-# with ccuhub.py and logger.py running
+# run ccuhub and logger
+python ccuhub.py
 
 # unfortunately inter-container communication is non-trivial without docker-compose
 # so we'll just run our frontend directly on the host instead of in Docker 
@@ -94,6 +90,7 @@ docker run -it --rm --publish-all --volume $CCU_SANDBOX:/sandbox \
 
 # in the frontend directory run
 export MODEL_SERVICE=127.0.0.1
+export MODEL_PORT=8000
 python -u main.py
 
 # run backend and give it a name (name is optional)
@@ -101,8 +98,20 @@ python -u main.py
 MODEL_SERVICE=columbia-communication-change-backend
 docker run --gpus all -it --rm -p 8000:8000 --publish-all --name ${MODEL_SERVICE} columbia-communication-change-backend
 
-# inject messages
+# save ouput JSONL
+# run script.py and logger.py in separate terminals
+# save output for each injected test input to JSONL file
+# kill/restart logger.py after each call to script.py
+python logger.py --jsonl ./transcripts/text_M01000FLX_out.jsonl
 python script.py --jsonl ./transcripts/text_M01000FLX.jsonl --fast 0.01
+# kill/restart logger.py
+
+python logger.py --jsonl ./transcripts/audio_M01000537_out.jsonl
+python script.py --jsonl ./transcripts/audio_M01000537.jsonl --fast 0.01
+# kill/restart logger
+
+python logger.py --jsonl ./transcripts/video_M010009A4_out.jsonl
+python script.py --jsonl ./transcripts/video_M010009A4.jsonl --fast 0.01
 
 # you should now see that your frontend is hitting your backend with API calls!
 ```
@@ -137,18 +146,17 @@ docker push cirano-docker.cse.sri.com/columbia-communication-change:latest
 mkdir -p columbia-communication-change
 
 # copy files to staging directory
-# TODO: add output files
-cp columbia-communication-change.yaml ./transcripts/audio_M01000537.jsonl ./transcripts/video_M010009A4.jsonl ./transcripts/text_M01000FLX.jsonl ./columbia-communication-change
+cp columbia-communication-change.yaml ./transcripts/audio_M01000537.jsonl ./transcripts/video_M010009A4.jsonl ./transcripts/text_M01000FLX.jsonl ./transcripts/audio_M01000537_out.jsonl ./transcripts/video_M010009A4_out.jsonl ./transcripts/text_M01000FLX_out.jsonl ./columbia-communication-change
 
-# zip directory
-zip -r columbia-communication-change.zip columbia-communication-change
+# push all files in the directory to artifactory
+./push.sh
 
-# push this zip file to artifactory
+# our push one by one
 curl -H 'X-JFrog-Art-Api:'"${ARTIFACTORY_APIKEY}" -T columbia-communication-change.zip \
 "https://artifactory.sri.com/artifactory/cirano-local/columbia-communication-change/columbia-communication-change.zip"
 ```
 
-## Push your backend container to AWSs's container registry
+## Push your backend container to AWS's container registry
 ```
 <!-- # authenticate to AWS ECR
 pip install boto3
@@ -181,6 +189,16 @@ aws ecr get-login-password --region us-east-1 --profile yh3228 | docker login --
 
 # build your backend container
 CONTAINER_NAME=columbia-communication-change-backend
+docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:latest -f Dockerfile .
+
+# tag this container
+docker tag ${CONTAINER_NAME}:latest 753712517198.dkr.ecr.us-east-1.amazonaws.com/integration/${CONTAINER_NAME}:latest
+
+# push to AWS
+docker push 753712517198.dkr.ecr.us-east-1.amazonaws.com/integration/${CONTAINER_NAME}:latest
+
+# build/push the vision container
+CONTAINER_NAME=columbia-vision-backend
 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:latest -f Dockerfile .
 
 # tag this container

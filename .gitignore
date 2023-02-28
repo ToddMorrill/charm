@@ -158,3 +158,5 @@ netrc
 *.jsonl
 M010009A4.json
 M01000537.json
+
+*.whl
