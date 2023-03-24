@@ -16,9 +16,9 @@ export CCU_SANDBOX=/home/iron-man/Documents/charm/integration/sandbox
 python create_jsonl.py --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1
 
 # validate the format
-python jsonlcheck.py ./transcripts/audio_M01000537.jsonl
-python jsonlcheck.py ./transcripts/text_M01000FLX.jsonl
-python jsonlcheck.py ./transcripts/video_M010009A4.jsonl
+python jsonlcheck.py ./transcripts/audio_M01000537_input.jsonl
+python jsonlcheck.py ./transcripts/text_M01000FLX_input.jsonl
+python jsonlcheck.py ./transcripts/video_M010009A4_input.jsonl
 ```
 
 ## Publishing and subscribing to the mock data stream
@@ -57,6 +57,15 @@ DOCKER_BUILDKIT=1 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:lat
 
 # run your container
 docker run -it --rm --publish-all --volume $CCU_SANDBOX:/sandbox ${CONTAINER_NAME}
+
+# optional environment variables
+export MODEL_SERVICE=3.225.204.208
+export MODEL_PORT=8000
+docker run -it --rm --publish-all \
+    --volume $CCU_SANDBOX:/sandbox \
+    --env MODEL_SERVICE=${MODEL_SERVICE} \
+    --env MODEL_PORT=${MODEL_PORT} \
+    ${CONTAINER_NAME}    
 
 # with ccuhub.py and logger.py running, inject the jsonl messages again
 # confirm that your container is processing the messages
@@ -102,16 +111,16 @@ docker run --gpus all -it --rm -p 8000:8000 --publish-all --name ${MODEL_SERVICE
 # run script.py and logger.py in separate terminals
 # save output for each injected test input to JSONL file
 # kill/restart logger.py after each call to script.py
-python logger.py --jsonl ./transcripts/text_M01000FLX_out.jsonl
-python script.py --jsonl ./transcripts/text_M01000FLX.jsonl --fast 0.01
+python logger.py --jsonl ./transcripts/text_M01000FLX_output.jsonl
+python script.py --jsonl ./transcripts/text_M01000FLX_input.jsonl --fast 0.01
 # kill/restart logger.py
 
-python logger.py --jsonl ./transcripts/audio_M01000537_out.jsonl
-python script.py --jsonl ./transcripts/audio_M01000537.jsonl --fast 0.01
+python logger.py --jsonl ./transcripts/audio_M01000537_output.jsonl
+python script.py --jsonl ./transcripts/audio_M01000537_input.jsonl --fast 0.01
 # kill/restart logger
 
-python logger.py --jsonl ./transcripts/video_M010009A4_out.jsonl
-python script.py --jsonl ./transcripts/video_M010009A4.jsonl --fast 0.01
+python logger.py --jsonl ./transcripts/video_M010009A4_output.jsonl
+python script.py --jsonl ./transcripts/video_M010009A4_input.jsonl --fast 0.01
 
 # you should now see that your frontend is hitting your backend with API calls!
 ```
@@ -124,10 +133,16 @@ docker login cirano-docker.cse.sri.com
 ## Update your container's yaml file and validate its formatting
 ```
 python yamlcheck.py columbia-communication-change.yaml
+
+# check jsonl output files
+python jsonlcheck.py ./transcripts/audio_M01000537_output.jsonl
+python jsonlcheck.py ./transcripts/text_M01000FLX_output.jsonl
+python jsonlcheck.py ./transcripts/video_M010009A4_output.jsonl
 ```
 
 ## Pushing your frontend container to SRI's Artifactory
 ```
+CONTAINER_NAME=columbia-communication-change
 DOCKER_BUILDKIT=1 docker build \
     -t cirano-docker.cse.sri.com/columbia-communication-change:0.2 \
     -t ${CONTAINER_NAME}:latest \
@@ -146,7 +161,7 @@ docker push cirano-docker.cse.sri.com/columbia-communication-change:latest
 mkdir -p columbia-communication-change
 
 # copy files to staging directory
-cp columbia-communication-change.yaml ./transcripts/audio_M01000537.jsonl ./transcripts/video_M010009A4.jsonl ./transcripts/text_M01000FLX.jsonl ./transcripts/audio_M01000537_out.jsonl ./transcripts/video_M010009A4_out.jsonl ./transcripts/text_M01000FLX_out.jsonl ./columbia-communication-change
+cp columbia-communication-change.yaml ./transcripts/audio_M01000537_input.jsonl ./transcripts/video_M010009A4_input.jsonl ./transcripts/text_M01000FLX_input.jsonl ./transcripts/audio_M01000537_output.jsonl ./transcripts/video_M010009A4_output.jsonl ./transcripts/text_M01000FLX_output.jsonl ./columbia-communication-change
 
 # push all files in the directory to artifactory
 ./push.sh

@@ -6,10 +6,10 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
-import utils
+from . import utils
 
 
-def create_folder(parents=[]):
+def create_folder(folder_name, parents=[]):
     """ Create a folder and prints the folder ID
     Returns : Folder Id
 
@@ -23,7 +23,7 @@ def create_folder(parents=[]):
         # create drive api client
         service = build('drive', 'v3', credentials=creds)
         file_metadata = {
-            'name': 'test-directory',
+            'name': folder_name,
             'mimeType': 'application/vnd.google-apps.folder',
             'parents': parents
         }

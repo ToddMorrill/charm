@@ -1,0 +1,20 @@
+Circumplex theory is a social psychology based theory that characterizes social interactions between speakers. The social orientation tagset includes: {Assured-Dominant, Gregarious-Extraverted, Warm-Agreeable, Unassuming-Ingenuous, Unassured-Submissive, Aloof-Introverted, Cold, Arrogant-Calculating}, which are defined below in more detail.
+
+Assured-Dominant - Demands to be the center of interest / Demands attention, Does most of the talking, Speaks loudly, Is firm, Is self-confident, Is forceful, Is ambitious, Is assertive, Is persistent, Is domineering, Not self-conscious
+
+Gregarious-Extraverted - Feels comfortable around people, Starts conversations, Talks to a lot of different people, Loves large groups, Is friendly, Is enthusiastic, Is warm, Is extraverted, Is good-natured, Is cheerful / happy, Is pleasant, Is outgoing, Is approachable, Is not shy, Is "lively"
+
+Warm-Agreeable - Is interested in people, Reassures others, Inquires about others' well-being, Gets along well with others, Is kind, Is polite and courteous, Is sympathetic, Is respectful, Is tender-hearted, Is cooperative, Is appreciative, Is accommodating, Is gentle, Is charitable
+
+Unassuming-Ingenuous - Tolerates a lot from others, Takes things as they come, Tells the truth, Thinks of others first, Does not brag or boast, Seldom stretches the truth, Does not scheme or plot, Is modest, Is trustworthy, Is unassuming, Is honest, Not self-centered, Is sincere, Not demanding, Is straightforward
+
+Unassured-Submissive - Speaks softly, Lets others finish what they are saying, Dislikes being the center of attention, Doubts themselves, Not especially thorough, Doesn’t like to work too hard / will give up easily,  Is impractical, Is timid, Is inconsistent, Is weak, Is disorganized, Is not authoritative, Is a bit lazy, Is not forceful
+
+Aloof-Introverted - Is quiet, especially around strangers, Is a very private person, Doesn't talk a lot / Has little to say, Doesn’t smile much, Doesn’t reveal much about themselves, Is not demonstrative (verbally or non-verbally), Is distant, Is shy, Is impersonal, Is introverted, Is disinterested in others, Is bashful, Is not very social, Is focused inward
+
+Cold - Believes people should fend for themselves, Doesn't fall for sob-stories, Is not interested in other people's problems, Not warm toward others, Is cruel, Is ruthless, Is cold-hearted, Is hard-hearted, Is unsympathetic, Is uncharitable
+
+Arrogant-Calculating - Flaunts what they have, Boasts and brags, Will plot and scheme to get ahead, Willing to exploit others for own benefit, Is big-headed, Is tricky, Is boisterous, Is conniving / calculating, Is conceited, Is crafty / cunning, Is cocky, Is manipulative of others
+---
+
+In the following conversation, each row corresponds to a speaker, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag, identify the utterance by its ID, and provide a brief explanation.

@@ -39,7 +39,7 @@ def load_json(filepath):
         return json.load(f)
 
 
-def create_messages(text_data):
+def create_messages(text_data, ):
     messages = []
     ctr = 1
     for turn in text_data:
@@ -49,10 +49,10 @@ def create_messages(text_data):
                 "start_seconds": turn.start,
                 "end_seconds": turn.end,
                 "asr_text": turn.text,
-                "asr_type": "CONSOLIDATED_RESULT",
+                "asr_type": "TURN",
                 "datetime": str(datetime.datetime.now()),
                 "container_name": "columbia-communication-change",
-                "trigger_id": "NA",
+                "trigger_id": ["NA"],
                 "vendor": "OpenAI",
                 "engine": "Whisper",
                 "audio_source": "AUDIO_ENV",
@@ -60,7 +60,8 @@ def create_messages(text_data):
                 "segment_id": "NA",
                 "asr_json": "NA",
                 "asr_language": "Chinese",
-                "asr_language_code": "zh"
+                "asr_language_code": "zh",
+                "speaker": "FLE",
             }
         message = {
             "queue": "RESULT",
@@ -138,7 +139,7 @@ def main(args):
 
     file_id_map = {'text': text_file_id, 'video': video_file_id, 'audio': audio_file_id}
     for modality in transcripts:
-        file_name = f'{modality}_{file_id_map[modality]}.jsonl'
+        file_name = f'{modality}_{file_id_map[modality]}_input.jsonl'
         filepath = os.path.join('./transcripts', file_name)
         # write jsonl format
         with open(filepath, 'w') as out:

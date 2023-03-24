@@ -1,10 +1,15 @@
 """Utility file storing commonly used functions."""
 import os
 from collections import defaultdict
+import hashlib
 import logging
 import json
+import zipfile
+from io import StringIO
 
+import whisper
 import pandas as pd
+import yaml
 
 # add in easy to understand data types
 MODALITIES = {
@@ -18,6 +23,7 @@ MODALITIES = {
 def load_release_metadata(raw_data_dir):
     """Loads metadata related to all available releases stored in
     raw_data_dir."""
+    # TODO: add support for .zip files
     # release folders
     releases = {
         'R1':
@@ -26,6 +32,14 @@ def load_release_metadata(raw_data_dir):
         'LDC2022E19_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R2_V2.0',
         'R3':
         'LDC2022E20_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R3_V1.0',
+        'R4_00':
+        'LDC2022E21_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R4_V1.0_00',
+        'R4_01':
+        'LDC2022E21_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R4_V1.0_01',
+        'R4_02':
+        'LDC2022E21_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R4_V1.0_02',
+        'R5':
+        'LDC2022E23_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R5_V1.0',
         'Mini-Eval':
         'LDC2022E22_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Source_Data'
     }
@@ -38,9 +52,22 @@ def load_release_metadata(raw_data_dir):
     release_dfs = {}
     for release in release_filepaths:
         if not os.path.exists(release_filepaths[release]):
-            logging.warning(
-                f'Release {release_filepaths[release]} does not exist and is being skipped.'
-            )
+            # try to load from .zip file
+            zip_file = os.path.join(raw_data_dir, releases[release] + '.zip')
+            if os.path.exists(zip_file):
+                with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                    file_name = os.path.join(releases[release], 'docs/file_info.tab')
+                    temp_df = pd.read_csv(
+                        StringIO(zip_ref.read(file_name).decode(
+                            'utf-8')), delimiter='\t')
+                    temp_df.insert(0, column='release', value=release)
+                    release_dfs[release] = temp_df
+                    continue
+            # try loading from .tar.gz file
+            else:
+                logging.warning(
+                    f'Release {release_filepaths[release]} does not exist and is being skipped.'
+                )
             continue
         temp_df = pd.read_csv(release_filepaths[release], delimiter='\t')
         temp_df.insert(0, column='release', value=release)
@@ -54,7 +81,7 @@ def load_ldc_annotations(raw_data_dir):
     # anno folders
     annos = {
         'Annotation-1':
-        'LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V3.0',
+        'LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V5.0',
         'Mini-Eval-Annotations':
         'LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered'
     }
@@ -181,3 +208,63 @@ def load_translated_files(translation_dir, return_data=False):
     if return_data:
         return translation_files, data_dfs, data
     return translation_files
+
+
+def strip_ldc_header(input_filepath, output_dir):
+    """Removes the header bytes of the input file and writes it to
+    output_dir."""
+    # read first 16 bytes and determine the size of the header
+    with open(input_filepath, 'rb') as f:
+        first_bytes = f.read(16).decode()
+
+    # header size in bytes
+    header_size = int(first_bytes.split('\n')[1].strip())
+
+    # read header size bytes, strip off first 16 bytes and last 8 bytes and pass remainder to a YAML parser
+    with open(input_filepath, 'rb') as f:
+        header = f.read(header_size).decode()
+        complete_content = f.read()
+
+    header_dict = yaml.safe_load(header[16:-8])
+
+    # assert that the md5 hash of the content matches the hash in the header
+    assert hashlib.md5(complete_content).hexdigest() == header_dict['data_md5']
+    # create output filename
+    out_file = os.path.basename(input_filepath)
+    out_file = out_file.split('.ldcc')[0]
+
+    # ensure output_dir exists and write to disk
+    os.makedirs(output_dir, exist_ok=True)
+    out_filepath = os.path.join(output_dir, out_file)
+    with open(out_filepath, 'wb') as output:
+        output.write(complete_content)
+    return out_filepath
+
+
+def write_json(filepath, dict_object):
+    with open(filepath, 'w') as f:
+        json.dump(dict_object, f, ensure_ascii=False)
+
+
+def load_json(filepath):
+    with open(filepath, 'r') as f:
+        return json.load(f)
+
+def transcribe(input_filepath, transcript_filepath, task='transcribe', strip_ldc=True):
+    # if file already exists, load it
+    if os.path.exists(transcript_filepath):
+        return load_json(transcript_filepath)
+
+    # strip LDC headers
+    output_dir = os.path.dirname(transcript_filepath)
+    if strip_ldc:
+        clean_filepath = strip_ldc_header(input_filepath, output_dir)
+    else:
+        clean_filepath = input_filepath
+    
+    # generate transcripts
+    model = whisper.load_model('large', device='cuda:2')
+    decode_options = {'language': 'Chinese', 'task': task}
+    result = model.transcribe(clean_filepath, **decode_options)
+    write_json(transcript_filepath, result)
+    return result

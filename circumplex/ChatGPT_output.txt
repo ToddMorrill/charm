@@ -1,0 +1,126 @@
+Speaker A (0): Unassuming-Ingenuous - This utterance does not provide enough information to determine a social orientation tag.
+
+Speaker B (1): Unassuming-Ingenuous - The speaker is casual and does not exhibit any specific social orientation traits.
+
+Speaker A (2): Unassuming-Ingenuous - The speaker is casual and does not exhibit any specific social orientation traits.
+
+Speaker A (3): Unassuming-Ingenuous - The speaker is casual and does not exhibit any specific social orientation traits.
+
+Speaker B (4): Unassuming-Ingenuous - The speaker is casual and does not exhibit any specific social orientation traits.
+
+Speaker B (5): Gregarious-Extraverted - The speaker is proactive in reaching out and making plans, which aligns with traits of being outgoing, friendly, and enthusiastic.
+
+Speaker A (6): Unassuming-Ingenuous - The speaker is self-reflective and honest about their personal challenges in playing a sport.
+
+Speaker B (7): Unassuming-Ingenuous - The speaker is asking a question and does not exhibit any specific social orientation traits.
+
+Speaker A (8): Unassuming-Ingenuous - The speaker is reflecting on feedback they received and does not exhibit any specific social orientation traits.
+
+Speaker A (9): Arrogant-Calculating - The speaker is comparing themselves to their father, who has a mindset that cannot tolerate making mistakes. This trait aligns with being conceited, manipulative, and willing to exploit others.
+
+Speaker B (10): Unassured-Submissive - The utterance "嗯" is a noncommittal response, which suggests a lack of confidence or assertiveness.
+
+Speaker B (11): Unassured-Submissive - The utterance "嗯深受影响。。。" also suggests a lack of confidence or assertiveness, as it implies that Speaker B is easily influenced.
+
+Speaker A (12): Unassuming-Ingenuous - The utterance "世界上还有另外一种不叫caraway 的菜有香菜味" is straightforward and not boastful, suggesting an unassuming personality.
+
+Speaker B (13): Unassuming-Ingenuous - The utterance "哈哈" is a simple, genuine laugh, suggesting an unassuming personality.
+
+Speaker A (14): Unassured-Submissive - The utterance "我不是之前数据处理得不合理吗，我就有在办公室里说我这个处理方法完全不对（completely wrong)习惯性贬低自己。然后#######的研究做出来结果不significant，然后她开会的时候就跟她导师说 我的结果虽然significant但是模型是completely wrong的。。。我觉得特别不舒服。。。但是又不好说什么因为毕竟是我自己在办公室说了这话。看来以后不可以随便在办公室说自嘲的话了。。。要有信心才行" suggests a lack of confidence and self-deprecation, indicating an unassured or submissive personality.
+
+Speaker B (15): Warm-Agreeable - The utterance "是啊 摸头" is a friendly and reassuring response, suggesting a warm and agreeable personality.
+
+Speaker A (16): Unassured-Submissive - The utterance "不开心" suggests a lack of assertiveness and confidence, indicating an unassured or submissive personality.
+
+Speaker B (17): Warm-Agreeable - The utterance "谦虚但不要自贬" is a kind and supportive response, suggesting a warm and agreeable personality.
+
+Speaker B (18): Unassuming-Ingenuous - The utterance "换个角度想 人家也就是照实说了啊 别放在心上 以后自己注意就好了" is straightforward and not boastful, suggesting an unassuming personality.
+
+Speaker B (19): Warm-Agreeable - The utterance "摸头" is a friendly and reassuring gesture, suggesting a warm and agreeable personality.
+
+Speaker A (20): Unassured-Submissive - Speaker A speaks softly, is not confident in their own abilities, and tends to devalue themselves.
+
+Speaker A (21): Cold - Speaker A is being critical of themselves, and Speaker B responds in a dismissive and unsympathetic way.
+
+Speaker B (22): Gregarious-Extraverted - Speaker B starts the conversation, and is friendly and outgoing in their speech.
+
+Speaker B (23): Aloof-Introverted - Speaker B implies that people from other cultures might not understand the way Chinese people interact socially.
+
+Speaker A (24): Unassuming-Ingenuous - Speaker A expresses a modest and unassuming attitude.
+
+Speaker B (25): Assured-Dominant - Speaker B suggests that being confident and not humble is a better approach, but also implies that there is a balance to be struck between being confident and being arrogant.
+
+Speaker A (26): Aloof-Introverted - Speaker A expresses unhappiness in a quiet, reserved way.
+
+Speaker B (27): Arrogant-Calculating - Speaker B implies that being confident can be seen as being cocky, and suggests that Speaker A should recognize their own limitations.
+
+Speaker B (28): Warm-Agreeable - Speaker B tries to reassure Speaker A and put them at ease.
+
+Speaker B (29): Warm-Agreeable - Speaker B reminds Speaker A that they often encourage and support them.
+
+Speaker A (30): Unassuming-Ingenuous - The speaker is being polite and suggests correcting something.
+Speaker B (31): Warm-Agreeable - The speaker agrees and encourages the other person.
+Speaker B (32): Unassuming-Ingenuous - The speaker suggests a solution to a problem.
+Speaker B (33): Gregarious-Extraverted - The speaker suggests discussing plans for the evening.
+Speaker A (34): Unassuming-Ingenuous - The speaker suggests postponing the plan to the next day.
+Speaker A (35): Unassuming-Ingenuous - The speaker expresses concern about inconvenience caused by someone's actions.
+Speaker A (36): Unassuming-Ingenuous - The speaker agrees to a proposal.
+Speaker B (37): Warm-Agreeable - The speaker suggests an alternative option.
+Speaker B (38): Gregarious-Extraverted - The speaker suggests watching a movie together.
+Speaker A (39): Warm-Agreeable - The speaker shows concern and inquires about the other person's well-being.
+
+Speaker A (40): Unassuming-Ingenuous - The speaker is expressing a lack of distinction between himself/herself and the listener, implying that they are similar and on equal footing.
+
+Speaker B (41): Aloof-Introverted - The speaker's response is not directly related to the previous utterance, indicating disinterest or unwillingness to engage in the conversation.
+
+Speaker B (42): Unassured-Submissive - The speaker expresses hesitancy and vulnerability by admitting that he/she has not eaten enough.
+
+Speaker A (43): Unassuming-Ingenuous - The speaker expresses regret and self-deprecation for not making a better food choice earlier.
+
+Speaker A (44): Gregarious-Extraverted - The speaker suggests a plan to go out and eat together, indicating a desire for social interaction and enjoyment.
+
+Speaker A (45): Warm-Agreeable - The speaker offers to order a pizza, demonstrating kindness, thoughtfulness, and consideration for the other person's preferences.
+
+Speaker B (46): Warm-Agreeable - The speaker agrees to the suggestion of going out to eat, indicating a willingness to engage and participate.
+
+Speaker A (47): Unassuming-Ingenuous - The speaker expresses disappointment and uncertainty regarding the availability of a specific topping, suggesting a lack of entitlement or arrogance.
+
+Speaker A (48): Unassured-Submissive - The speaker expresses confusion and uncertainty about registration information, indicating a lack of confidence or knowledge.
+
+Speaker B (49): Aloof-Introverted - The speaker responds with what appears to be a username or password, indicating disinterest in engaging further in the conversation.
+
+Speaker B (50): Unassuming-Ingenuous - The utterance is straightforward and honest, simply stating a fact about mushrooms.
+
+Speaker B (51): Aloof-Introverted - The utterance is short and not very engaging, with no attempt to further the conversation or connect with Speaker A.
+
+Speaker A (52): Unassured-Submissive - The utterance is spoken softly and doesn't convey much confidence or assertiveness.
+
+Speaker A (53): Unassuming-Ingenuous - The utterance is straightforward and honest, simply stating that Speaker A has found what they were looking for.
+
+Speaker A (54): Assured-Dominant - The utterance uses assertive language, suggesting that Speaker A is confident and in control of the situation.
+
+Speaker A (55): Assured-Dominant - The utterance is confident and assertive, with Speaker A sharing the price they paid for the pizza.
+
+Speaker A (56): Gregarious-Extraverted - The utterance is friendly and enthusiastic, suggesting that Speaker A is eager to share the pizza with Speaker B.
+
+Speaker A (57): Gregarious-Extraverted - The utterance is enthusiastic and outgoing, with Speaker A sharing a good deal they found.
+
+Speaker A (58): Unassuming-Ingenuous - The utterance is straightforward and honest, expressing regret at not having ordered a larger pizza.
+
+Speaker B (59): Unassured-Submissive - The utterance is tentative and unsure, with Speaker B expressing uncertainty and potentially deferring to Speaker A's decision.
+
+Speaker A (60): Unassured-Submissive - This utterance is brief and indicates a lack of confidence or hesitation.
+
+Speaker A (61): Cold - This utterance is abrupt and lacks warmth or sympathy.
+
+Speaker A (62): Unassuming-Ingenuous - This utterance shows modesty and a lack of self-aggrandizement.
+
+Speaker A (63): Unassuming-Ingenuous - This utterance shows consideration for others and a lack of entitlement.
+
+Speaker B (64): Warm-Agreeable - This utterance is friendly and agreeable.
+
+Speaker A (65): Aloof-Introverted - This utterance is quiet and reserved, indicating introversion.
+
+Speaker A (66): Gregarious-Extraverted - This utterance shows enthusiasm and interest in socializing.
+
+Speaker B (67): Warm-Agreeable - This utterance is friendly and agreeable.

@@ -126,7 +126,7 @@ def main(args):
 
     col_order = [
         'release', 'catalog_id', 'file_uid', 'url', 'modality', 'start', 'end',
-        'transcribed', 'utterance_count', 'emotion_count',
+        'transcribed', 'utterance_count',
         'valence_arousal_count', 'norms_count', 'changepoint_count',
         'emotions_count', 'data_type', 'lang_id_manual', 'wrapped_md5',
         'unwrapped_md5', 'download_date', 'content_date', 'status_in_corpus',

@@ -38,11 +38,15 @@ def get_turn_text(message, debug=False):
         if debug:
             print("Warning: ASR message contains no type field")
         return None
-    elif message['asr_type'] != "CONSOLIDATED_RESULT":
+    elif message['asr_type'] != "TURN":
         if debug:
             print("Wrong message type", message['asr_type'])
         return None
-
+    elif 'asr_language_code' not in message:
+        return None
+    elif message['asr_language_code'] != 'zh':
+        return None
+    
     turn_text = message['asr_text']
 
     if not type(turn_text) == str:

@@ -99,7 +99,13 @@ def main():
                 # if speaker field present in the message, copy forward
                 if 'speaker' in message:
                     cp_message['speaker'] = message['speaker']
-
+                
+                # if trigger id field in the message, then copy forward and add current message's trigger ID
+                # (TODO: add other UUIDs)
+                cp_message['trigger_id'] = [message['uuid']]
+                if 'trigger_id' in message:
+                    # ensure trigger_id is a list
+                    cp_message['trigger_id'] = cp_message['trigger_id'] + list(message['trigger_id'])
                 CCU.check_message(cp_message)
                 CCU.send(result, cp_message)
 
