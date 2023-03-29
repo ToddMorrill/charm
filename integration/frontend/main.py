@@ -6,13 +6,13 @@ Examples:
 """
 import logging
 import random
-import time
 import os
 
 import requests
 import zmq
 from ccu import CCU
-from utils import DialogAct, check_for_change, get_turn_text_asr_result_zh, get_turn_text_translation_zh_en
+from utils import DialogAct, check_for_change, \
+    get_turn_text_asr_result, get_turn_text_translation
 
 
 def main():
@@ -42,17 +42,20 @@ def main():
         # Check for ASR Result ("asr_result") Message or 
         # Translation ("translation") Message
         # https://ldc-issues.jira.com/wiki/spaces/CCUC/pages/3060269057/Messages+and+Queues
-        if 'type' in message and message['type'] == 'asr_result':
-            turn_text = get_turn_text_asr_result_zh(message)
-        elif 'type' in message and message['type'] == 'translation':
-            turn_text = get_turn_text_translation_zh_en(message)
+        if message and ('type' in message and message['type'] == 'asr_result'):
+            # Only accept Chinese ASR_RESULTS
+            turn_text = get_turn_text_asr_result(message,
+                asr_language_code='zh')
+        elif message and ('type' in message and message['type'] == 'translation'):
+            # Only accept en (English) -> zh (Chinese) translations.
+            turn_text = get_turn_text_translation( message,
+                source_language_code='en',
+                target_language_code='zh')
         else:
             continue
 
         if not turn_text:
             continue
-
-        # logging.debug(f'Received message: {turn_text}')
 
         start, end = None, None
         if "start_seconds" in message:
@@ -61,7 +64,6 @@ def main():
             end = message["end_seconds"]
 
         if len(all_turns) > 0 and start < all_turns[-1].end:
-            # print("resetting for new conversation")
             found_changepoints = []
             all_turns = []
 

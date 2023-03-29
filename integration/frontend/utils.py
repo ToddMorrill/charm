@@ -27,13 +27,18 @@ class ChangePoint:
         return "llr: {}, tone: {}, \nturn:\n{}".format(self.llr, self.tone,
                                                        self.turn)
 
-def get_turn_text_translation_zh_en(message, debug=False):
+def get_turn_text_translation(message, 
+                              source_language_code, 
+                              target_language_code, 
+                              debug=False):
     """
         Validates messages from the translation RESULT queue,
-        only works for en (source) -> zh (target)
+        generalized to any desired language.
 
         :param message: json: 
         :param debug: bool:
+        :param source_language_code: str
+        :param target_language_code: str
         :returns: str:
     """
     if "translation" not in message:
@@ -50,14 +55,14 @@ def get_turn_text_translation_zh_en(message, debug=False):
     elif "source_language_code" not in message:
         if debug:
             print("Warning: Translation message does not have a `source_language` field.")
-    elif message["source_language_code"] != "en":
+    elif message["source_language_code"] != source_language_code:
         if debug:
             print("Warning: Looking at the wrong source language:", message['source_language_code'])
         return None
     elif "target_language_code" not in message:
         if debug:
             print("Warning: Translation message does not have a `target_language` field.")
-    elif message['target_language_code'] != "zh":
+    elif message['target_language_code'] != target_language_code:
         if debug:
             print("Warning: Looking at the wrong target language:", message['target_language_code'])
         return None
@@ -81,7 +86,9 @@ def get_turn_text_translation_zh_en(message, debug=False):
 
     return turn_text
 
-def get_turn_text_asr_result_zh(message, debug=False):
+def get_turn_text_asr_result(message,
+                            asr_language_code,
+                            debug=False):
     """Validates and returns incoming message if it passes checks."""
     if 'asr_text' not in message:
         if debug:
@@ -97,7 +104,7 @@ def get_turn_text_asr_result_zh(message, debug=False):
         return None
     elif 'asr_language_code' not in message:
         return None
-    elif message['asr_language_code'] != 'zh':
+    elif message['asr_language_code'] != asr_language_code:
         return None
     
     turn_text = message['asr_text']

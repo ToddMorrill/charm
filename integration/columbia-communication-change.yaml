@@ -11,19 +11,21 @@ description: |
   then the system produces a change point. The backend of this system is running
   on a hosted server with a GPU.
 testingInstructions: |
-  There are six test files and accompanying test output files with corresponding names:
-    - text_M01000FLX_input.jsonl -> text_M01000FLX_output.jsonl
-    - audio_M01000537_input.jsonl -> audio_M01000537_output.jsonl
-    - video_M010009A4_input.jsonl -> video_M010009A4_output.jsonl
-    - text_M01000FLY_input_translation.jsonl -> text_M01000FLY_output_translation.jsonl
-    - audio_M01000538_input_translation.jsonl -> audio_M01000538_output_translation.jsonl
-    - video_M010009BC_input_translation.jsonl -> video_M010009BC_output_translation.jsonl
+  There are seven test files and accompanying test output files. The last of which contains tests for wrong messages
+  with more information at test_frontend.txt the files are the following:
+    - ./transcripts/text_M01000FLX_input.jsonl -> ./transcripts/text_M01000FLX_output.jsonl
+    - ./transcripts/audio_M01000537_input.jsonl -> ./transcripts/audio_M01000537_output.jsonl
+    - ./transcripts/video_M010009A4_input.jsonl -> ./transcripts/video_M010009A4_output.jsonl
+    - ./transcripts/text_M01000FLY_input_translation.jsonl -> ./transcripts/text_M01000FLY_output_translation.jsonl
+    - ./transcripts/audio_M01000538_input_translation.jsonl -> ./transcripts/audio_M01000538_output_translation.jsonl
+    - ./transcripts/video_M010009BC_input_translation.jsonl -> ./transcripts/video_M010009BC_output_translation.jsonl
 resources:
   - CPU
   - Internet
 inputs:
   - RESULT:
     - asr_result
+    - translation
 outputs:
   - RESULT:
     - change_point

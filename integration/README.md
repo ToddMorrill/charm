@@ -63,7 +63,7 @@ python query.py
 CONTAINER_NAME=columbia-communication-change
 # if using the netrc file and on linux, include buildkit env var
 # more detail here: https://docs.docker.com/build/buildkit/#getting-started
-DOCKER_BUILDKIT=1 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:latest -f Dockerfile --secret id=netrc,src=../netrc .
+DOCKER_BUILDKIT=1 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:latest -f Dockerfile --secret id=netrc,src=../.netrc .
 
 # run your container
 docker run -it --rm --publish-all --volume $CCU_SANDBOX:/sandbox ${CONTAINER_NAME}
@@ -114,8 +114,8 @@ python -u main.py
 
 # run backend and give it a name (name is optional)
 # to limit GPUs use: --gpus '"device=1,2"'
-MODEL_SERVICE=columbia-communication-change-backend
-docker run --gpus all -it --rm -p 8000:8000 --publish-all --name ${MODEL_SERVICE} columbia-communication-change-backend
+CONTAINER_NAME=columbia-communication-change-backend
+docker run --gpus all -it --rm -p 8000:8000 --publish-all --name ${CONTAINER_NAME}
 
 # save ouput JSONL
 # run script.py and logger.py in separate terminals
