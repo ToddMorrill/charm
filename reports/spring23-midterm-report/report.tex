@@ -1,0 +1,77 @@
+\documentclass[12pt]{article}
+\usepackage{blindtext}
+\usepackage{titling}
+\usepackage[papersize={8.5in,11in}, margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{adjustbox}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=black,
+    pdfpagemode=FullScreen,
+}
+\usepackage[
+backend=biber,
+style=alphabetic,
+sorting=ynt
+]{biblatex}
+\addbibresource{bib.bib}
+
+\graphicspath{{./analysis}}
+
+\title{Spring 2023 Midterm Report [DRAFT]}
+\author{Todd Morrill\\
+Columbia University\\
+tm3229@columbia.edu}
+\date{March 2023}
+% \setlength{\droptitle}{-7em}
+\begin{document}
+\maketitle
+
+\section{Summary}
+This report summarizes my work on the DARPA Computational Cultural Understanding (CCU) \cite{DARPA_2021} project during the spring 2023 semester from January to March, 2023. Internally at Columbia, this project is known as Cross-Cultural Harmony through Affect and Response Mediation (CHARM). My primary areas of focus are: 1) leading the integration and evaluation efforts, and 2) exploring novel approaches for change point prediction (TA1.3) using circumplex theory.
+
+\subsection{Integration \& Evaluation} My primary contributions so far have been to the integration role. I created a blueprint for refactoring all our TA1.* systems into frontend and backend systems that handle interactions with the CCU library queues and run our machine learning models, respectively. This refactoring was important to ensure that our deep learning models would run on the resource constrained CCU tensorbooks. I led Yi Fung, Revant Teotia, and Jeff (Zehui) Wu in delivering our TA1.* systems on time for the integration test. For the remainder of the semester, my focus will be on delivering systems for the full evaluation and guiding Harsha Vemulapati and Ivan Dewerpe in their efforts to integrate our systems.
+
+\subsection{Change Point Prediction} My primary research focus this semester has been developing circumplex theoretic change point prediction systems. My initial focus has been on developing a labeled dataset and I organized an annotation exercise with 2 students from University of Illinois Urbana-Champaign (UIUC) to examine the efficacy of using social orientation tags to predict change points. The results showed that circumplex theory may admit systems that are relatively precise compared to our baseline systems, but that may need improvement with respect to recall. My focus for the remainder of the semester is on collecting a larger labeled corpus via GPT-3.5 and variants and building change point prediction systems that use social orientation tags.
+
+\section{Integration \& Evaluation}
+Integration is the task of combining all of the systems developed for the DARPA CCU program across TA1 and TA2 teams. TA1 teams are responsible for social norm detection, emotion detection, and change point detection. TA2 teams are responsible for consuming the output of TA1 systems to inform operators (e.g. diplomats, military commanders, etc.) how their cross-cultural interactions are going and provide guidance to them so they can achieve their objectives. In addition to combining all the systems, the integration lead interfaces with SRI, Monash, LDC, NIST, and all other TA1 teams to comply with the procedures of the program.
+
+\textbf{Key Accomplishments}
+\begin{enumerate}
+    \item Refactored all TA1 systems to use a common frontend and backend system architecture.
+    \item Deployed backend systems to AWS.
+    \item Coordinated with all stakeholers (e.g. CHARM team, SRI, LDC, NIST, etc.) to ensure that all systems comply with the requested specifications.
+\end{enumerate}
+
+\section{Change Point Prediction}
+The change point prediction task to attempts identify potentially impactful moments in a conversation. My focus has been on developing labeled corpora based on circumplex theory, which can then be used to develop performant and interpretable change point systems.
+
+\textbf{Key Accomplishments}
+\begin{enumerate}
+    \item Created and refined annotation instructions for social orientation tags with guidance from Professor Colin Wayne Leach, Professor of Psychology \& Africana Studies from Barnard College.
+    \item Worked with Yanda Chen, Yukun Huang, and 2 students from UIUC to label 8 videos using social orientation tags.
+    \item Evaluated the efficacy of social orientation tags for change point prediction.
+\end{enumerate}
+
+\section{Next Steps}
+\subsection{Integration \& Evaluation} My primary focus for the remainder of the semester will be to deliver systems for the full evaluation. This involves working with the CHARM and NIST teams to ensure that our systems comply with the evaluation procedures. In parallel, I will be guiding Harsha Vemulapati and Ivan Dewerpe in their efforts to integrate our systems.
+
+My primary goals for evaluation are
+\begin{enumerate}
+    \item To make use of last semester's best performing system.
+    \item Evaluate a simple off-the-shelf sentiment classifier against the unsequestered mini-evaluation data.  
+\end{enumerate}
+
+\subsection{Change Point Prediction} My current goals are to collect a larger labeled corpus via GPT-3.5 and variants and build change point prediction systems that use social orientation tags. I have already labeled a text conversation with social orientation tags using ChatGPT, GPT-3.5-turbo, and GPT-4 and am working with Yanda Chen to assess the accuracy of these models. In parallel, I developed an \verb|XLM-RoBERTa| \cite{conneau2020unsupervised} based classification pipeline to determine how well the social orientation tags can be predicted from text. The work can be structured to into increasingly sophisticated change point prediction systems. All models can ingest a size $k$ (e.g. 4, 8, etc.) window of features and predict the presence of a change point in the window. A baseline classifier can take as input text and social orientation tags at the utterance level. This can initially be trained on a small portion of the LDC labeled data (e.g. the 624 change point labeled text conversations). A second, more sophisticated model can make use of an auxiliary task to learn richer representations of change points. In particular, we can train a model that uses both a classification objective and the triplet loss \cite{Schroff_2015} that attempts to push positive change point examples closer together in vector space and push negative examples further apart. This technique will help us extract more information from the labeled data and will likely improve the performance of our change point prediction systems. This technique can be extended to arbitrary collections of feature vectors (e.g. audio, video, etc.). Finally, we can scale up our annotated corpus to include all change point annotated audio and video data.
+
+\printbibliography
+\end{document}

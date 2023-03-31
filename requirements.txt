@@ -13,3 +13,8 @@ scikit-learn
 fastapi
 uvicorn[standard]
 requests
+openai
+torch
+transformers
+evaluate
+datasets

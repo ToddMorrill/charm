@@ -17,4 +17,5 @@ Cold - Believes people should fend for themselves, Doesn't fall for sob-stories,
 Arrogant-Calculating - Flaunts what they have, Boasts and brags, Will plot and scheme to get ahead, Willing to exploit others for own benefit, Is big-headed, Is tricky, Is boisterous, Is conniving / calculating, Is conceited, Is crafty / cunning, Is cocky, Is manipulative of others
 ---
 
-In the following conversation, each row corresponds to a speaker, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag, identify the utterance by its ID, and provide a brief explanation.
+In the following conversation, each line corresponds to a speaker, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag, identify the utterance by its speaker and ID, and provide a brief explanation.
+
