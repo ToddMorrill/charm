@@ -1,0 +1,25 @@
+Evaluation 1:
+ASR_RESULT tests:
+1. Wrong queue | Expected: Should be ignored
+2. Correct queue - Wrong type | Expected: Should be ignored
+3. Wrong language | Expected: Should be ignored
+4. Text is in the wrong language but labelled correctly | Expected: TBD - Emailed Joshua
+5. No asr_text field | Expected: Ignored - Debug on --> Warning message
+6. No asr_type | Expected: Ignored - Debug on --> Warning message
+7. Wrong asr_type | Expected: Ignored - Debug on --> Warning message
+8. No asr_language_code | Expected: Ignored
+9 Empty turn_text | Expected: Ignored - Debug on --> Warning message
+10. Message field is empty | Expected: Ignored - Debug on --> Warning message
+
+TRANSLATION_RESULT tests:
+1. Correct queue - Wrong type | Expected: Should be ignored
+2. No asr_type | Expected: Ignored - Debug on --> Warning message
+3. Wrong asr_type | Expected: Ignored - Debug on --> Warning message
+4. No source_language_code field | Expected: Ignored - Debug on --> Warning message
+5. Wrong source_language_code | Expected: Ignored - Debug on --> Warning message
+6. No target_language_code field | Expected: Ignored - Debug on --> Warning message
+7. Wrong target_language_code | Expected: Ignored - Debug on --> Warning message
+8. Text is in the wrong language but labelled correctly | Expected: TBD - emailed Joshua
+9. Empty turn_text | Expected: Ignored - Debug on --> Warning message
+10. Message field is empty | Expected: Ignored - Debug on --> Warning message
+11. No translation field | Expected: Ignored - Debug on --> Warning message

@@ -1,9 +1,7 @@
-"""This file takes as input an LDC data directory and produces jsonl files for
-the transcripts of these files.
-
-Examples:
-    $ python create_jsonl.py --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1
 """
+    Creates synthetic test for translation messages: injects wrong data randomly to test robustness
+"""
+
 import argparse
 import json
 import datetime
@@ -38,12 +36,56 @@ def load_json(filepath):
     with open(filepath, 'r') as f:
         return json.load(f)
 
-
 def create_messages(text_data, ):
     messages = []
     ctr = 1
-    for turn in text_data:
-        embedded_message = {
+    for i, turn in enumerate(text_data):
+        if i % 2 == 0:
+            translation_message = {
+                    "asr_type":"TURN",
+                    "source_language_code":"en",
+                    "trigger_id":["NA"],
+                    "source_language":"English",
+                    "target_language":"Mandarin Chinese",
+                    "target_language_code": "zh",
+                    "type":"translation",
+                    "uuid":turn.uuid,
+                    "audio_id":"NA",
+                    "datetime":str(datetime.datetime.now()),
+                    "translation_romanized":"NA",
+                    "container_name":"columbia-communication-change",
+                    "start_seconds":turn.start,
+                    "end_seconds":turn.end,
+                    "engine": "MarianNMT",
+                    "vendor": "OpenAI",
+                    "speaker": "FLE",
+                    "translation":turn.text,
+                    "text":turn.text,
+                    "segment_id":"NA",
+                    "audio_source":"AUDIO_ENV"
+            }
+            asr_message = {
+                "type": "asr_result",
+                "uuid": turn.uuid,
+                "start_seconds": turn.start,
+                "end_seconds": turn.end,
+                "asr_text": "[ENGLISH TEXT INPUT]",
+                "asr_type": "TURN",
+                "datetime": str(datetime.datetime.now()),
+                "container_name": "columbia-communication-change",
+                "trigger_id": ["NA"],
+                "vendor": "OpenAI",
+                "engine": "Whisper",
+                "audio_source": "AUDIO_ENV",
+                "audio_id": "NA",
+                "segment_id": "NA",
+                "asr_json": "NA",
+                "asr_language": "English",
+                "asr_language_code": "en",
+                "speaker": "FLE",
+            }
+        else:
+            asr_message = {
                 "type": "asr_result",
                 "uuid": turn.uuid,
                 "start_seconds": turn.start,
@@ -63,16 +105,49 @@ def create_messages(text_data, ):
                 "asr_language_code": "zh",
                 "speaker": "FLE",
             }
-        message = {
+            translation_message = {
+                    "asr_type":"TURN",
+                    "source_language_code":"zh",
+                    "trigger_id":["NA"],
+                    "source_language":"Mandarin Chinese",
+                    "target_language":"English",
+                    "target_language_code": "en",
+                    "type":"translation",
+                    "uuid":turn.uuid,
+                    "audio_id":"NA",
+                    "datetime":str(datetime.datetime.now()),
+                    "translation_romanized":"NA",
+                    "container_name":"columbia-communication-change",
+                    "start_seconds":turn.start,
+                    "end_seconds":turn.end,
+                    "engine": "MarianNMT",
+                    "vendor": "OpenAI",
+                    "speaker": "FLE",
+                    "translation":"[ENGLISH TRANSLATED TEXT]",
+                    "text":turn.text,
+                    "segment_id":"NA",
+                    "audio_source":"AUDIO_ENV"
+            }
+        
+        message_translation = {
             "queue": "RESULT",
             "time_seconds": ctr,
-            "message": embedded_message
+            "message": translation_message
         }
-        CCU.check_message(embedded_message)
-        messages.append(message)
+        
+        CCU.check_message(translation_message)
+
+        message_asr = {
+            "queue": "RESULT",
+            "time_seconds": ctr,
+            "message": asr_message
+        }
+
+        CCU.check_message(asr_message)
+        messages.append(message_asr)
+        messages.append(message_translation)
         ctr += 1
     return messages
-
 
 def create_text_objects(segments):
     text_objects = []
@@ -97,27 +172,28 @@ def main(args):
 
     # filter for a text, audio, and video file
     text_file_id = file_info_df[file_info_df['data_type'] ==
-                                '.ltf.xml'].iloc[0]['file_uid']
+                                '.ltf.xml'].iloc[1]['file_uid']
     text_transcript = loader.load_text(text_file_id)
 
     video_file_id = file_info_df[file_info_df['data_type'] ==
-                                 '.mp4.ldcc'].iloc[0]['file_uid']
+                                 '.mp4.ldcc'].iloc[1]['file_uid']
     in_video_file_path = os.path.join(data_dir, 'video',
                                       f'{video_file_id}.mp4.ldcc')
 
     audio_file_id = file_info_df[file_info_df['data_type'] ==
-                                 '.flac.ldcc'].iloc[0]['file_uid']
+                                 '.flac.ldcc'].iloc[1]['file_uid']
     in_audio_file_path = os.path.join(data_dir, 'audio',
                                       f'{audio_file_id}.flac.ldcc')
 
     video_transcript = os.path.join('./transcripts', f'{video_file_id}.json')
     audio_transcript = os.path.join('./transcripts', f'{audio_file_id}.json')
+
     transcripts = {}
+
     for modality, input_filepath, transcript in [
         ('video', in_video_file_path, video_transcript),
         ('audio', in_audio_file_path, audio_transcript)
     ]:
-        print(transcript)
         if os.path.exists(transcript):
             transcripts[modality] = load_json(transcript)
             continue
@@ -140,7 +216,7 @@ def main(args):
 
     file_id_map = {'text': text_file_id, 'video': video_file_id, 'audio': audio_file_id}
     for modality in transcripts:
-        file_name = f'{modality}_{file_id_map[modality]}_input.jsonl'
+        file_name = f'{modality}_{file_id_map[modality]}_input_translation.jsonl'
         filepath = os.path.join('./transcripts', file_name)
         # write jsonl format
         with open(filepath, 'w') as out:

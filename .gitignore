@@ -158,5 +158,11 @@ netrc
 *.jsonl
 M010009A4.json
 M01000537.json
+M010009BC.json
+M01000538.json
+integration/test-data/ex/*
+env.sh
+output.txt
+output_new.txt
 
 *.whl

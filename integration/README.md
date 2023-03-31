@@ -14,11 +14,17 @@ export CCU_SANDBOX=/home/iron-man/Documents/charm/integration/sandbox
 ```
 # create a sample text, audio, and video jsonl file
 python create_jsonl.py --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1
+python create_jsonl_translation.py --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1
 
 # validate the format
 python jsonlcheck.py ./transcripts/audio_M01000537_input.jsonl
 python jsonlcheck.py ./transcripts/text_M01000FLX_input.jsonl
 python jsonlcheck.py ./transcripts/video_M010009A4_input.jsonl
+
+#validate the format (translation test data)
+python jsonlcheck.py ./transcripts/audio_M01000538_input_translation.jsonl
+python jsonlcheck.py ./transcripts/text_M01000FLY_input_translation.jsonl
+python jsonlcheck.py ./transcripts/video_M010009BC_input_translation.jsonl
 ```
 
 ## Publishing and subscribing to the mock data stream
@@ -36,6 +42,10 @@ python -u main.py
 python script.py --jsonl ./transcripts/audio_M01000537.jsonl --fast 0.01
 python script.py --jsonl ./transcripts/text_M01000FLX.jsonl --fast 0.01
 python script.py --jsonl ./transcripts/video_M010009A4.jsonl --fast 0.01
+
+python script.py --jsonl ./transcripts/audio_M01000538_input_translation.jsonl --fast 0.01
+python script.py --jsonl ./transcripts/text_M01000FLY_input_translation.jsonl --fast 0.01
+python script.py --jsonl ./transcripts/video_M010009BC_input_translation.jsonl --fast 0.01
 ```
 
 ## Running the backend
@@ -53,7 +63,7 @@ python query.py
 CONTAINER_NAME=columbia-communication-change
 # if using the netrc file and on linux, include buildkit env var
 # more detail here: https://docs.docker.com/build/buildkit/#getting-started
-DOCKER_BUILDKIT=1 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:latest -f Dockerfile --secret id=netrc,src=../netrc .
+DOCKER_BUILDKIT=1 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:latest -f Dockerfile --secret id=netrc,src=../.netrc .
 
 # run your container
 docker run -it --rm --publish-all --volume $CCU_SANDBOX:/sandbox ${CONTAINER_NAME}
@@ -104,8 +114,8 @@ python -u main.py
 
 # run backend and give it a name (name is optional)
 # to limit GPUs use: --gpus '"device=1,2"'
-MODEL_SERVICE=columbia-communication-change-backend
-docker run --gpus all -it --rm -p 8000:8000 --publish-all --name ${MODEL_SERVICE} columbia-communication-change-backend
+CONTAINER_NAME=columbia-communication-change-backend
+docker run --gpus all -it --rm -p 8000:8000 --publish-all --name ${CONTAINER_NAME}
 
 # save ouput JSONL
 # run script.py and logger.py in separate terminals
@@ -121,6 +131,15 @@ python script.py --jsonl ./transcripts/audio_M01000537_input.jsonl --fast 0.01
 
 python logger.py --jsonl ./transcripts/video_M010009A4_output.jsonl
 python script.py --jsonl ./transcripts/video_M010009A4_input.jsonl --fast 0.01
+
+python logger.py --jsonl ./transcripts/text_M01000FLY_output_translation.jsonl
+python script.py --jsonl ./transcripts/text_M01000FLY_input_translation.jsonl --fast 0.01
+
+python logger.py --jsonl ./transcripts/audio_M01000538_output_translation.jsonl
+python script.py --jsonl ./transcripts/audio_M01000538_input_translation.jsonl --fast 0.01
+
+python logger.py --jsonl ./transcripts/video_M010009BC_output_translation.jsonl
+python script.py --jsonl ./transcripts/video_M010009BC_input_translation.jsonl --fast 0.01
 
 # you should now see that your frontend is hitting your backend with API calls!
 ```
@@ -138,6 +157,9 @@ python yamlcheck.py columbia-communication-change.yaml
 python jsonlcheck.py ./transcripts/audio_M01000537_output.jsonl
 python jsonlcheck.py ./transcripts/text_M01000FLX_output.jsonl
 python jsonlcheck.py ./transcripts/video_M010009A4_output.jsonl
+python jsonlcheck.py ./transcripts/text_M01000FLY_output_translation.jsonl
+python jsonlcheck.py ./transcripts/audio_M01000538_output_translation.jsonl
+python jsonlcheck.py ./transcripts/video_M010009BC_output_translation.jsonl
 ```
 
 ## Pushing your frontend container to SRI's Artifactory
@@ -161,7 +183,7 @@ docker push cirano-docker.cse.sri.com/columbia-communication-change:latest
 mkdir -p columbia-communication-change
 
 # copy files to staging directory
-cp columbia-communication-change.yaml ./transcripts/audio_M01000537_input.jsonl ./transcripts/video_M010009A4_input.jsonl ./transcripts/text_M01000FLX_input.jsonl ./transcripts/audio_M01000537_output.jsonl ./transcripts/video_M010009A4_output.jsonl ./transcripts/text_M01000FLX_output.jsonl ./columbia-communication-change
+cp columbia-communication-change.yaml ./transcripts/audio_M01000537_input.jsonl ./transcripts/video_M010009A4_input.jsonl ./transcripts/text_M01000FLX_input.jsonl ./transcripts/audio_M01000537_output.jsonl ./transcripts/video_M010009A4_output.jsonl ./transcripts/text_M01000FLX_output.jsonl ./columbia-communication-change ./transcripts/text_M01000FLY_input_translation ./transcripts/text_M01000FLY_output_translation ./transcripts/audio_M01000538_input_translation.jsonl ./transcripts/audio_M01000538_output_translation.jsonl ./transcripts/video_M010009BC_input_translation.jsonl transcripts/video_M010009BC_output_translation.jsonl
 
 # push all files in the directory to artifactory
 ./push.sh

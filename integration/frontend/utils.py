@@ -27,8 +27,68 @@ class ChangePoint:
         return "llr: {}, tone: {}, \nturn:\n{}".format(self.llr, self.tone,
                                                        self.turn)
 
+def get_turn_text_translation(message, 
+                              source_language_code, 
+                              target_language_code, 
+                              debug=False):
+    """
+        Validates messages from the translation RESULT queue,
+        generalized to any desired language.
 
-def get_turn_text(message, debug=False):
+        :param message: json: 
+        :param debug: bool:
+        :param source_language_code: str
+        :param target_language_code: str
+        :returns: str:
+    """
+    if "translation" not in message:
+        if debug:
+            print("Warning: Translation message does not have a `translation` field")
+        return None
+    elif "asr_type" not in message:
+        if debug:
+            print("Warning: Translation message contains no `asr_type` field")
+        return None
+    elif message["asr_type"] != "TURN":
+        if debug:
+            print("Warning: Wrong message type", message['asr_type'])
+    elif "source_language_code" not in message:
+        if debug:
+            print("Warning: Translation message does not have a `source_language` field.")
+    elif message["source_language_code"] != source_language_code:
+        if debug:
+            print("Warning: Looking at the wrong source language:", message['source_language_code'])
+        return None
+    elif "target_language_code" not in message:
+        if debug:
+            print("Warning: Translation message does not have a `target_language` field.")
+    elif message['target_language_code'] != target_language_code:
+        if debug:
+            print("Warning: Looking at the wrong target language:", message['target_language_code'])
+        return None
+    
+    turn_text = message['translation']
+    
+    if not type(turn_text) == str:
+        if debug:
+            print("Warning: Text field in translation message has type - ",
+                  type(turn_text))
+        return None
+    if "@reject@" in turn_text:
+        turn_text = turn_text.replace("@reject@", "")
+    
+    turn_text = turn_text.rstrip().lstrip()
+    
+    if turn_text == None or turn_text == '':
+        if debug:
+            print("Warning: Text field in ASR message is empty or None")
+        return None
+
+    return turn_text
+
+def get_turn_text_asr_result(message,
+                            asr_language_code,
+                            debug=False):
     """Validates and returns incoming message if it passes checks."""
     if 'asr_text' not in message:
         if debug:
@@ -44,7 +104,7 @@ def get_turn_text(message, debug=False):
         return None
     elif 'asr_language_code' not in message:
         return None
-    elif message['asr_language_code'] != 'zh':
+    elif message['asr_language_code'] != asr_language_code:
         return None
     
     turn_text = message['asr_text']
