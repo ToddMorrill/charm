@@ -12,9 +12,11 @@ export CCU_SANDBOX=/home/iron-man/Documents/charm/integration/sandbox
 
 ## Create test jsonl data
 ```
-# create a sample text, audio, and video jsonl file
+# create sample text, audio, and video jsonl files + translation jsonl files
 python create_jsonl.py --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1
-python create_jsonl_translation.py --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1
+python create_jsonl.py \
+    --data-dir ~/Documents/data/charm/raw/LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1 \
+    --translations
 
 # validate the format
 python jsonlcheck.py ./transcripts/audio_M01000537_input.jsonl
@@ -71,10 +73,12 @@ docker run -it --rm --publish-all --volume $CCU_SANDBOX:/sandbox ${CONTAINER_NAM
 # optional environment variables
 export MODEL_SERVICE=3.225.204.208
 export MODEL_PORT=8000
+export RANDOM_ERROR=0
 docker run -it --rm --publish-all \
     --volume $CCU_SANDBOX:/sandbox \
     --env MODEL_SERVICE=${MODEL_SERVICE} \
     --env MODEL_PORT=${MODEL_PORT} \
+    --env RANDOM_ERROR=${RANDOM_ERROR} \
     ${CONTAINER_NAME}    
 
 # with ccuhub.py and logger.py running, inject the jsonl messages again
@@ -169,8 +173,9 @@ DOCKER_BUILDKIT=1 docker build \
     -t cirano-docker.cse.sri.com/columbia-communication-change:0.2 \
     -t ${CONTAINER_NAME}:latest \
     -f Dockerfile \
-    --secret id=netrc,src=../netrc \
+    --secret id=netrc,src=../.netrc \
     .
+
 docker tag cirano-docker.cse.sri.com/columbia-communication-change:0.2 \
     cirano-docker.cse.sri.com/columbia-communication-change:latest
 docker push cirano-docker.cse.sri.com/columbia-communication-change:0.2
@@ -183,7 +188,7 @@ docker push cirano-docker.cse.sri.com/columbia-communication-change:latest
 mkdir -p columbia-communication-change
 
 # copy files to staging directory
-cp columbia-communication-change.yaml ./transcripts/audio_M01000537_input.jsonl ./transcripts/video_M010009A4_input.jsonl ./transcripts/text_M01000FLX_input.jsonl ./transcripts/audio_M01000537_output.jsonl ./transcripts/video_M010009A4_output.jsonl ./transcripts/text_M01000FLX_output.jsonl ./columbia-communication-change ./transcripts/text_M01000FLY_input_translation ./transcripts/text_M01000FLY_output_translation ./transcripts/audio_M01000538_input_translation.jsonl ./transcripts/audio_M01000538_output_translation.jsonl ./transcripts/video_M010009BC_input_translation.jsonl transcripts/video_M010009BC_output_translation.jsonl
+cp columbia-communication-change.yaml ./transcripts/audio_M01000537_input.jsonl ./transcripts/video_M010009A4_input.jsonl ./transcripts/text_M01000FLX_input.jsonl ./transcripts/audio_M01000537_output.jsonl ./transcripts/video_M010009A4_output.jsonl ./transcripts/text_M01000FLX_output.jsonl ./transcripts/text_M01000FLY_input_translation.jsonl ./transcripts/text_M01000FLY_output_translation.jsonl ./transcripts/audio_M01000538_input_translation.jsonl ./transcripts/audio_M01000538_output_translation.jsonl ./transcripts/video_M010009BC_input_translation.jsonl ./transcripts/video_M010009BC_output_translation.jsonl ./columbia-communication-change
 
 # push all files in the directory to artifactory
 ./push.sh

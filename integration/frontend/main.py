@@ -30,8 +30,8 @@ def main():
     asr = CCU.socket(CCU.queues['RESULT'], zmq.SUB)
     result = CCU.socket(CCU.queues['RESULT'], zmq.PUB)
 
-    block_size = 8
-    threshold = 0.25
+    block_size = 4
+    threshold = 0.04
 
     found_changepoints = []
     all_turns = []
@@ -82,11 +82,17 @@ def main():
                 da.score = json_result[0]['score']
             except Exception as e:
                 logging.error(f'API error: {e}')
-                # randomly generate a confidence score for now to simulate model prediction
-                da.score = random.random()    
         else:
-            # randomly generate a confidence score for now to simulate model prediction
-            da.score = random.random()
+            # if enabled, randomly generate a confidence score to simulate model prediction
+            rand_err_set = os.environ.get('RANDOM_ERROR') is not None
+            try:
+                # if RANDOM_ERROR=1
+                rand_err = int(os.environ['RANDOM_ERROR'])
+            except Exception:
+                logging.error(f'RANDOM_ERROR environment variable must be in [0, 1]; found {os.environ["RANDOM_ERROR"]}')
+                continue
+            if rand_err_set and rand_err:
+                da.score = random.random()    
 
         all_turns.append(da)
 

@@ -37,3 +37,4 @@ dockerCompose:
   environment:
     - MODEL_SERVICE="3.225.204.208"
     - MODEL_PORT="8000"
+    - RANDOM_ERROR=0

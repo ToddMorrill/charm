@@ -154,6 +154,7 @@ corpora.tsv
 *.tgz
 *.flac
 netrc
+.netrc
 *.zip
 *.jsonl
 M010009A4.json
@@ -166,3 +167,5 @@ output.txt
 output_new.txt
 
 *.whl
+
+ccu-config.yaml
