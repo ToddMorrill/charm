@@ -16,20 +16,6 @@ Cold - Believes people should fend for themselves, Doesn't fall for sob-stories,
 
 Arrogant-Calculating - Flaunts what they have, Boasts and brags, Will plot and scheme to get ahead, Willing to exploit others for own benefit, Is big-headed, Is tricky, Is boisterous, Is conniving / calculating, Is conceited, Is crafty / cunning, Is cocky, Is manipulative of others
 ---
-In the following conversation, each line corresponds to a speaker, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag, identify the utterance by its speaker and ID, and provide a brief explanation. For example here is the expected input and output format for a sample conversation.
 
-Input:
-Speaker 1 (1):  在不 (手机QQ可以视频聊天啦! http://mobile.qq.com )
-Speaker 2 (2):  在
-Speaker 1 (3):  今天和姨妈视频来着，刚知道这些事
-Speaker 2 (4):  我很无奈
-Speaker 2 (5):  真是不明白，本来他沾光的事情，怎么就成了这样了
+In the following conversation, each line corresponds to a speaker, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag, identify the utterance by its speaker and ID, and provide a brief explanation.
 
-Output:
-Speaker 1 (1): Aloof-Introverted - The speaker is sharing a message about a new feature on mobile QQ.
-Speaker 2 (2): Unassured-Submissive - The speaker responds with a simple "在" which indicates a lack of confidence or assertiveness.
-Speaker 1 (3): Warm-Agreeable - The speaker shares a personal experience with the listener and uses a friendly tone.
-Speaker 2 (4): Unassured-Submissive - The speaker expresses a feeling of helplessness.
-Speaker 2 (5): Cold - The speaker expresses a lack of understanding and shows no sympathy for the situation.
----
-Input:

@@ -18,3 +18,5 @@ torch
 transformers
 evaluate
 datasets
+torchmetrics
+lightning

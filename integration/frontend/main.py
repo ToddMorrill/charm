@@ -82,6 +82,7 @@ def main():
                 da.score = json_result[0]['score']
             except Exception as e:
                 logging.error(f'API error: {e}')
+                continue
         else:
             # if enabled, randomly generate a confidence score to simulate model prediction
             rand_err_set = os.environ.get('RANDOM_ERROR') is not None

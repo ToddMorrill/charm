@@ -71,15 +71,15 @@ DOCKER_BUILDKIT=1 docker build -t ${CONTAINER_NAME}:0.2 -t ${CONTAINER_NAME}:lat
 docker run -it --rm --publish-all --volume $CCU_SANDBOX:/sandbox ${CONTAINER_NAME}
 
 # optional environment variables
-export MODEL_SERVICE=3.225.204.208
-export MODEL_PORT=8000
+export MODEL_SERVICE='"3.225.204.208"'
+export MODEL_PORT='"8000"'
 export RANDOM_ERROR=0
 docker run -it --rm --publish-all \
     --volume $CCU_SANDBOX:/sandbox \
     --env MODEL_SERVICE=${MODEL_SERVICE} \
     --env MODEL_PORT=${MODEL_PORT} \
     --env RANDOM_ERROR=${RANDOM_ERROR} \
-    ${CONTAINER_NAME}    
+    ${CONTAINER_NAME}
 
 # with ccuhub.py and logger.py running, inject the jsonl messages again
 # confirm that your container is processing the messages

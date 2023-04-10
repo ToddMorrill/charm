@@ -35,6 +35,6 @@ trainingLanguage:
 dockerCompose:
   image: cirano-docker.cse.sri.com/columbia-communication-change
   environment:
-    - MODEL_SERVICE="3.225.204.208"
-    - MODEL_PORT="8000"
+    - MODEL_SERVICE=3.225.204.208
+    - MODEL_PORT=8000
     - RANDOM_ERROR=0

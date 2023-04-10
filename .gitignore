@@ -169,3 +169,5 @@ output_new.txt
 *.whl
 
 ccu-config.yaml
+wandb
+lightning_logs
