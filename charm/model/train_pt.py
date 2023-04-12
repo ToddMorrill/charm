@@ -1,14 +1,26 @@
 """Rewrite of the classifier training script in native PyTorch.
 
 Examples:
-    $ python -m charm.model.train_pt
+    $ python -m charm.model.train_pt \
+        --triplet-loss \
+        --batch-size 16 \
+        --wandb-project social-orientation \
+        --epochs 20 \
+        --log-level INFO \
+        --seed 10
 
     # distributed training
     $ nohup torchrun --nproc_per_node=3 --nnodes=1 \
         -m charm.model.train_pt \
         --distributed --batch-size 16 --log-level INFO \
         --epochs 20 --wandb-project social-orientation \
+        --seed 10 \
         > train.log 2>&1 &
+
+TODOs:
+- figure out how to set the wandb loss as the best recorded loss instead of the ending loss
+- determine if it makes sense to resume training from a checkpoint with a lower learning rate
+- explore different learning rate schedulers that respond to the validation loss (i.e. lower on plateau)
 """
 import sys
 import logging

@@ -443,12 +443,13 @@ class Trainer():
         self.metrics[split]['epoch_accuracies'].append(epoch_accuracy)
         
         dist_log(self.args, f'{split} epoch metrics at (epoch:batch) ({self.epoch}:{self.global_step}) - Loss {epoch_loss:.2f} - Accuracy - {epoch_accuracy:.2f}')
+        # TODO: determine why this isn't logging
         self.log(
                 {
                     f'{split}_epoch_loss': epoch_loss,
                     f'{split}_epoch_accuracy': epoch_accuracy
                 },
-                step=self.epoch)
+                step=self.global_step)
 
     def configure_optimizer(self):
         """Creates an optimizer (and potentially a learning rate scheduler) for the model."""

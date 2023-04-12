@@ -148,7 +148,8 @@ def get_dataloaders(args,
             train_dataset, 
             num_replicas=args.world_size,
             rank=args.local_rank,
-            shuffle=True)
+            shuffle=True,
+            seed=args.seed)
     train_collate_fn = collate_fn if train_collate_fn is None else train_collate_fn
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
