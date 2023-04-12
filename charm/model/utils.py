@@ -1,5 +1,7 @@
+import logging
 from functools import partial
 import os
+import random
 
 from datasets import load_dataset
 import numpy as np
@@ -131,22 +133,34 @@ def get_imdb_dataset(tokenizer, debug_pct, remove_unused_columns=True):
     return tokenized_imdb['train'], tokenized_imdb['test'], id2label, label2id
 
 
-def get_dataloaders(config,
+def get_dataloaders(args,
                     collate_fn,
                     train_dataset,
                     val_dataset,
-                    test_dataset=None):
-    
+                    test_dataset=None,
+                    train_collate_fn=None):
+    train_sampler = None
+    if args.distributed:
+        # only use distributed sampler for training data because this sampler
+        # pads the dataset to be divisible by the number of processes
+        # which will mess up the validation and test data
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset, 
+            num_replicas=args.world_size,
+            rank=args.local_rank,
+            shuffle=True)
+    train_collate_fn = collate_fn if train_collate_fn is None else train_collate_fn
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=config.batch_size,
-        shuffle=True,
-        num_workers=0,
+        batch_size=args.batch_size,
+        shuffle=(train_sampler is None),
+        num_workers=1,
         pin_memory=True,
-        collate_fn=collate_fn)
+        collate_fn=train_collate_fn,
+        sampler=train_sampler)
     val_dataloader = torch.utils.data.DataLoader(
         val_dataset,
-        batch_size=config.batch_size * 2,
+        batch_size=args.batch_size * 2,
         shuffle=False,
         num_workers=0,
         pin_memory=True,
@@ -154,7 +168,7 @@ def get_dataloaders(config,
     if test_dataset is not None:
         test_dataloader = torch.utils.data.DataLoader(
             test_dataset,
-            batch_size=config.batch_size * 2,
+            batch_size=args.batch_size * 2,
             shuffle=False,
             num_workers=0,
             pin_memory=True,
@@ -197,13 +211,75 @@ def get_optimizer(args, model, **kwargs):
     
     # get learning rate scheduler
     scheduler = None
-    if args.lr_scheduler == 'linear':
+    if args.lr_scheduler == 'linear-with-warmup':
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=args.num_warmup_steps,
             num_training_steps=args.num_train_steps,
         )
     return optimizer, scheduler
+
+def get_triples(labels, num_classes):
+    """Generates indexes corresponding to positive and negative examples for
+    each example in labels."""
+    # for each class, get the index of the examples with that class
+    class_indexes = {}
+    for i in range(num_classes):
+        class_examples = torch.where(labels == i)[0]
+        if len(class_examples) > 0:
+            class_indexes[i] = class_examples
+
+    # treat each label in labels as an anchor
+    # for each label in labels, generate a positive and negative example
+    anchors = []
+    positives = []
+    negatives = []
+    for anchor_idx in range(len(labels)):
+        # get the anchor class
+        anchor_class = labels[anchor_idx].item()
+
+        # if no positive examples to compare to or if no negative classes present, continue
+        if len(class_indexes[anchor_class]) == 1 or len(class_indexes) == 1:
+            continue
+
+        # select a random positive example with the same class label from class_indexes
+        positive_idx = anchor_idx
+        while positive_idx == anchor_idx:
+            positive_idx = random.choice(class_indexes[anchor_class])
+
+        # randomly select a negative class
+        negative_class = anchor_class
+        while negative_class == anchor_class:
+            negative_class = random.choice(list(class_indexes.keys()))
+
+        # randomly select a negative example from the negative class
+        negative_idx = random.choice(class_indexes[negative_class])
+
+        # add the anchor, positive, and negative examples to the lists
+        anchors.append(anchor_idx)
+        positives.append(positive_idx)
+        negatives.append(negative_idx)
+    # convert to tensors
+    anchors = torch.tensor(anchors, dtype=torch.long)
+    positives = torch.tensor(positives, dtype=torch.long)
+    negatives = torch.tensor(negatives, dtype=torch.long)
+    return anchors, positives, negatives
+
+def triplet_collate(tokenizer, num_labels):
+    padding_collate = DataCollatorWithPadding(tokenizer=tokenizer)
+    def collate(batch):
+        # pad sequences and get attention masks
+        batch = padding_collate(batch)
+        # get the labels
+        labels = batch['labels']
+
+        # get the anchor, positive, and negative examples
+        anchors, positives, negatives = get_triples(labels, num_labels)
+        batch['anchors'] = anchors
+        batch['positives'] = positives
+        batch['negatives'] = negatives
+        return batch
+    return collate
 
 def get_data(args):
     # get the tokenizer
@@ -220,8 +296,17 @@ def get_data(args):
     train_dataset, val_dataset, id2label, label2id = data
     args.id2label = id2label
     args.label2id = label2id
+    train_collate = None
+    if args.triplet_loss:
+        train_collate = triplet_collate(tokenizer, len(id2label))
     collate = DataCollatorWithPadding(tokenizer=tokenizer)
     train_dataloader, val_dataloader = get_dataloaders(args, collate,
                                                        train_dataset,
-                                                       val_dataset)
+                                                       val_dataset, train_collate_fn=train_collate)
     return train_dataloader, val_dataloader, args
+
+def dist_log(args, message):
+    if args.distributed and args.local_rank == 0:
+        logging.info(message)
+    elif not args.distributed:
+        logging.info(message)

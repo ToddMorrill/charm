@@ -70,20 +70,25 @@ def parse_args(args):
     )
     parser.add_argument('--batch-size',
                         type=int,
-                        default=32,
+                        default=16,
                         help='The batch size to use for training.')
     parser.add_argument('--wandb-project',
                         type=str,
                         help='The name of the wandb project to log to.')
-    
     parser.add_argument('--lr',
                                             type=float,
                                             default=5e-5,
                                             help='The learning rate.')
     parser.add_argument('--reporting-steps', type=int, default=100, help='The number of steps between each reporting step.')
     parser.add_argument('--val-steps', type=int, default=100, help='The number of steps between evaluation.')
-
+    parser.add_argument('--distributed', action='store_true', default=False, help='If passed, the code will run in distributed mode using DDP.')
+    parser.add_argument('--log-level', type=str, default='INFO', help='The logging level to use. Must be one of {DEBUG, INFO, WARNING, ERROR, CRITICAL}.')
+    parser.add_argument('--num-checkpoints', type=int, default=2, help='The number of checkpoints to keep. This will always attempt to keep the best checkpoint first.')
+    parser.add_argument('--early-stopping-patience', type=int, default=10, help='The number of evaluations to wait before early stopping.')
+    parser.add_argument('--seed', type=int, default=42, help='The random seed to use.')
+    parser.add_argument('--triplet-loss', action='store_true', default=False, help='If passed, the model will use a triplet loss.')
     args = parser.parse_args(args)
+    # TODO: do we want to adjust this by the effective batch size?
     args.optimizer_kwargs = {'lr': args.lr}
     args.device = None
     if not args.disable_cuda and torch.cuda.is_available():
@@ -91,5 +96,4 @@ def parse_args(args):
     else:
         args.device = torch.device('cpu')
 
-    logging.info(f'Running pipeline with the following arguments:\n{args}')
     return args
