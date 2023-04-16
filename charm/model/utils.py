@@ -2,6 +2,7 @@ import logging
 from functools import partial
 import os
 import random
+from functools import cache
 
 from datasets import load_dataset
 import numpy as np
@@ -11,12 +12,13 @@ from torch.utils.data import Dataset
 import torch
 from transformers import get_linear_schedule_with_warmup, DataCollatorWithPadding, AutoTokenizer
 
+from ..loaders.ldc_data import load_ldc_data
+
 
 class CircumplexDataset(Dataset):
     """Pretokenizes the text and combines window size utterances into one
     sample, adding special tokens, as needed, when generating the example.
     """
-
     def __init__(self, df, tokenizer, window_size=5, stride=1):
         self.df = df
         self.tokenizer = tokenizer
@@ -59,6 +61,125 @@ class CircumplexDataset(Dataset):
         return row.to_dict()
 
 
+class ChangePointDataset(Dataset):
+    """Pretokenizes the text and combines window size utterances into one
+    sample, adding special tokens, as needed, when generating the example.
+    """
+    def __init__(self,
+                 df,
+                 tokenizer,
+                 window_size=4,
+                 impact_scalar=False,
+                 social_orientation=False):
+        self.df = df
+        self.tokenizer = tokenizer
+        self.max_len = tokenizer.model_max_length
+        self.window_size = window_size
+        self.impact_scalar = impact_scalar
+        self.social_orientation = social_orientation
+
+        # pretokenize the text
+        # TODO: move over to an apache beam pipeline
+        # though there's not really an easy way to do this without replicating
+        # the data many times
+        # TODO: add special tokens to the text
+        # TODO: use ground truth social orientation labels
+        if social_orientation:
+            # e.g. [Arrogant-Calculating] 还是挣那么多钱
+            self.df['text_final'] = self.df['social_orientation_preds'].apply(
+                lambda x: f'[{x}]') + ' ' + self.df['text']
+        else:
+            self.df['text_final'] = self.df['text']
+
+        self.df['input_ids'] = self.tokenizer(
+            self.df['text_final'].values.tolist(),
+            add_special_tokens=False,
+            max_length=self.max_len,
+            truncation=True,
+            return_attention_mask=False)['input_ids']
+
+        # build a map from index to file_id
+        self.idx_file_id_map = {idx: file_id for idx, file_id in self.df.index}
+        self.file_id_start_end_df = {}
+        for file_id in self.df.index.get_level_values('file_id').unique():
+            file_df = self.df.xs(file_id, level=1, drop_level=False)
+            first_idx = file_df.iloc[0].name[0]
+            last_idx = file_df.iloc[-1].name[0]
+            self.file_id_start_end_df[file_id] = (first_idx, last_idx, file_df)
+
+    def _get_tokens(self, input_id_list):
+        tokens = [self.tokenizer.cls_token_id]
+        for idx, utterance in enumerate(input_id_list):
+            # add a sep token between utterances
+            if idx > 0:
+                tokens.append(self.tokenizer.sep_token_id)
+            tokens.extend(utterance)
+            tokens.append(self.tokenizer.eos_token_id)
+
+        # if the sequence is too long, truncate half from the beginning and half from the end
+        # TODO: with this, you get the occasial sequence that starts with a sep token
+        if len(tokens) > self.max_len:
+            overage = len(tokens) - self.max_len
+            tokens = tokens[((overage // 2) + 2):-((overage // 2) + 2)]
+            # add the cls and eos tokens back
+            tokens = [self.tokenizer.cls_token_id
+                      ] + tokens + [self.tokenizer.eos_token_id]
+        return tokens
+
+    def __len__(self):
+        # length is the number of examples that can be generated per filename
+        # times the number of filenames
+        return len(self.df)
+
+    @cache
+    def __getitem__(self, idx):
+        # TODO: speed this up somehow
+        file_id = self.idx_file_id_map[idx]
+        first_idx, last_idx, file_df = self.file_id_start_end_df[file_id]
+        # turns out that using iloc is faster than using loc
+        # translate the idx to a row number
+        idx_row_num = idx - first_idx
+        # get the start and end indices for the window
+        start_idx = max(0, idx_row_num - self.window_size)
+        end_idx = min(last_idx - first_idx,
+                      idx_row_num + (self.window_size - 1))
+
+        # start_idx = max(first_idx, idx - self.window_size)
+        # end_idx = min(last_idx, idx + (self.window_size - 1))
+        # # .loc[start_idx:end_idx] is inclusive
+        # utterances = file_df.loc[start_idx:end_idx]
+        utterances = file_df.iloc[start_idx:end_idx + 1]
+        # print(f'utterances are {utterances}')
+        input_id_list = utterances['input_ids'].values.tolist()
+        tokens = self._get_tokens(input_id_list)
+        # print(f'tokens is {tokens}')
+
+        # label should be the max label in the window (i.e. greedily label change points)
+        # i.e. if any of the utterances in the window are change points, then the window is a change point
+        label = utterances['labels'].max()
+        # print(f'label is {label}')
+        # if nan, then set to 0
+        if np.isnan(label):
+            label = 0
+        label = int(label)
+
+        # add the impact scalar if needed
+        if self.impact_scalar:
+            # get the min impact scalar in the window among the impact scalars that are not 0
+            # if impact scalar is not set it will NaN. Min will ignore NaNs if there is a non-NaN value
+            impact_scalar = utterances['impact_scalar'].min()
+            if np.isnan(impact_scalar):
+                impact_scalar = 0.0
+            impact_scalar = float(impact_scalar)
+            return {
+                'input_ids': tokens,
+                'label': label,
+                'impact_scalar': impact_scalar
+            }
+
+        return {'input_ids': tokens, 'label': label}
+
+
 def get_circumpex_dataset(tokenizer, data_dir, debug_pct):
     # load the dataset
     df = pd.read_csv(os.path.join(data_dir,
@@ -99,7 +220,67 @@ def get_circumpex_dataset(tokenizer, data_dir, debug_pct):
                                     tokenizer,
                                     window_size=8,
                                     stride=1)
-    return train_dataset, val_dataset, id2label, label2id
+    return {
+        'train_dataset': train_dataset,
+        'val_dataset': val_dataset,
+        'test_dataset': None,
+        'id2label': id2label,
+        'label2id': label2id
+    }
+
+
+def get_change_point_dataset(tokenizer, args):
+    # load the dataset
+    df = pd.read_csv(os.path.join(
+        args.data_dir, 'change_point_social_orientation_train_val_test.csv'),
+                     index_col=0)
+
+    # split into train, val, and test sets
+    train_df = df[df['split'] == 'train'].reset_index(drop=True).reset_index()
+    val_df = df[df['split'] == 'val'].reset_index(drop=True).reset_index()
+    test_df = df[df['split'] == 'test'].reset_index(drop=True).reset_index()
+
+    # put an index on the DFs
+    train_df = train_df.set_index(['index', 'file_id'])
+    val_df = val_df.set_index(['index', 'file_id'])
+    test_df = test_df.set_index(['index', 'file_id'])
+
+    label2id = {'Change Point': 1, 'No Change Point': 0}
+    id2label = {v: k for k, v in label2id.items()}
+
+    # if debug_pct is set, use a subset of the training data
+    # TODO: Note that this is a little naive because we're not shuffling and
+    # arbitrarily grabbing the first N rows. At least it won't break the index
+    if args.debug_pct < 1.0:
+        train_df = train_df[:int(args.debug_pct * len(train_df))]
+
+    # create the datasets
+    train_dataset = ChangePointDataset(
+        train_df,
+        tokenizer,
+        window_size=args.window_size,
+        impact_scalar=args.impact_scalar,
+        social_orientation=args.social_orientation)
+    val_dataset = ChangePointDataset(
+        val_df,
+        tokenizer,
+        window_size=args.window_size,
+        impact_scalar=args.impact_scalar,
+        social_orientation=args.social_orientation)
+    test_dataset = ChangePointDataset(
+        test_df,
+        tokenizer,
+        window_size=args.window_size,
+        impact_scalar=args.impact_scalar,
+        social_orientation=args.social_orientation)
+
+    return {
+        'train_dataset': train_dataset,
+        'val_dataset': val_dataset,
+        'test_dataset': test_dataset,
+        'id2label': id2label,
+        'label2id': label2id
+    }
 
 
 def preprocess_function(examples, tokenizer):
@@ -130,7 +311,13 @@ def get_imdb_dataset(tokenizer, debug_pct, remove_unused_columns=True):
     if remove_unused_columns:
         tokenized_imdb = tokenized_imdb.remove_columns(
             ['text', 'attention_mask'])
-    return tokenized_imdb['train'], tokenized_imdb['test'], id2label, label2id
+    return {
+        'train_dataset': tokenized_imdb['train'],
+        'val_dataset': tokenized_imdb['test'],
+        'test_dataset': None,
+        'id2label': id2label,
+        'label2id': label2id
+    }
 
 
 def get_dataloaders(args,
@@ -145,7 +332,7 @@ def get_dataloaders(args,
         # pads the dataset to be divisible by the number of processes
         # which will mess up the validation and test data
         train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, 
+            train_dataset,
             num_replicas=args.world_size,
             rank=args.local_rank,
             shuffle=True,
@@ -155,7 +342,7 @@ def get_dataloaders(args,
         train_dataset,
         batch_size=args.batch_size,
         shuffle=(train_sampler is None),
-        num_workers=1,
+        num_workers=args.num_dataloader_workers,
         pin_memory=True,
         collate_fn=train_collate_fn,
         sampler=train_sampler)
@@ -163,7 +350,7 @@ def get_dataloaders(args,
         val_dataset,
         batch_size=args.batch_size * 2,
         shuffle=False,
-        num_workers=0,
+        num_workers=args.num_dataloader_workers,
         pin_memory=True,
         collate_fn=collate_fn)
     if test_dataset is not None:
@@ -171,11 +358,11 @@ def get_dataloaders(args,
             test_dataset,
             batch_size=args.batch_size * 2,
             shuffle=False,
-            num_workers=0,
+            num_workers=args.num_dataloader_workers,
             pin_memory=True,
             collate_fn=collate_fn)
         return train_dataloader, val_dataloader, test_dataloader
-    return train_dataloader, val_dataloader
+    return train_dataloader, val_dataloader, None
 
 
 def get_optimizer(args, model, **kwargs):
@@ -209,7 +396,7 @@ def get_optimizer(args, model, **kwargs):
             model.parameters(),
             **kwargs,
         )
-    
+
     # get learning rate scheduler
     scheduler = None
     if args.lr_scheduler == 'linear-with-warmup':
@@ -219,6 +406,7 @@ def get_optimizer(args, model, **kwargs):
             num_training_steps=args.num_train_steps,
         )
     return optimizer, scheduler
+
 
 def get_triples(labels, num_classes):
     """Generates indexes corresponding to positive and negative examples for
@@ -266,8 +454,10 @@ def get_triples(labels, num_classes):
     negatives = torch.tensor(negatives, dtype=torch.long)
     return anchors, positives, negatives
 
+
 def triplet_collate(tokenizer, num_labels):
     padding_collate = DataCollatorWithPadding(tokenizer=tokenizer)
+
     def collate(batch):
         # pad sequences and get attention masks
         batch = padding_collate(batch)
@@ -280,7 +470,9 @@ def triplet_collate(tokenizer, num_labels):
         batch['positives'] = positives
         batch['negatives'] = negatives
         return batch
+
     return collate
+
 
 def get_data(args):
     # get the tokenizer
@@ -289,22 +481,27 @@ def get_data(args):
     if args.fast_dev_run and args.dataset != 'circumplex':
         # useful for sanity checking the system
         data = get_imdb_dataset(tokenizer, debug_pct=0.1)
-    else:
+    elif args.dataset == 'circumplex':
         # get the Circumplex dataset
-        data = get_circumpex_dataset(tokenizer, args.data_dir,
-                                     args.debug_pct)
+        data = get_circumpex_dataset(tokenizer, args.data_dir, args.debug_pct)
+    elif args.dataset == 'change-point':
+        data = get_change_point_dataset(tokenizer, args)
 
-    train_dataset, val_dataset, id2label, label2id = data
-    args.id2label = id2label
-    args.label2id = label2id
+    args.id2label = data['id2label']
+    args.label2id = data['label2id']
     train_collate = None
     if args.triplet_loss:
-        train_collate = triplet_collate(tokenizer, len(id2label))
+        train_collate = triplet_collate(tokenizer, len(args.id2label))
     collate = DataCollatorWithPadding(tokenizer=tokenizer)
-    train_dataloader, val_dataloader = get_dataloaders(args, collate,
-                                                       train_dataset,
-                                                       val_dataset, train_collate_fn=train_collate)
-    return train_dataloader, val_dataloader, args
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(
+        args,
+        collate,
+        data['train_dataset'],
+        data['val_dataset'],
+        test_dataset=data['test_dataset'],
+        train_collate_fn=train_collate)
+    return train_dataloader, val_dataloader, test_dataloader, args
+
 
 def dist_log(args, message):
     if args.distributed and args.local_rank == 0:

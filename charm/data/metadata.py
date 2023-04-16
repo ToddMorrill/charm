@@ -123,6 +123,7 @@ def main(args):
     meta_df = merge_transcription_info(asr_data, meta_df)
 
     transformed_dir = os.path.join(head, 'transformed')
+    os.makedirs(transformed_dir, exist_ok=True)
 
     col_order = [
         'release', 'catalog_id', 'file_uid', 'url', 'modality', 'start', 'end',

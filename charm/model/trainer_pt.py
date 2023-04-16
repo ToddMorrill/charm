@@ -56,7 +56,16 @@ class Trainer():
         self.configure_optimizer()
         self.global_step = 0
         self.epoch = 0
-        self.best_val_loss = float('inf')
+        if args.early_stopping_criterion == 'loss':
+            self.best_metric = float('inf')
+            self.minimize_metric = True
+        elif args.early_stopping_criterion == 'AP':
+            self.best_metric = -float('inf')
+            self.minimize_metric = False
+        else:
+            raise ValueError(
+                f'Invalid early stopping criterion: {args.early_stopping_criterion}'
+            )
         self.early_stopping_counter = self.args.early_stopping_patience
 
         # if resume training and checkpoint exists, load it
@@ -92,23 +101,32 @@ class Trainer():
             
 
     def _init_wandb(self, checkpoint):
+        """Initializes wandb logging."""
+        # create a run name based on the folder name of the model directory
+        self.wandb_run_name = None
+        if 'model_dir' in self.args and self.args.model_dir is not None:
+            self.wandb_run_name = os.path.basename(os.path.normpath(self.args.model_dir)) 
         self.args.wandb = True
         # if we're resuming a run, specify the run_id loaded from the checkpoint
         if self.args.resume and checkpoint is not None:
             self.wandb_run = wandb.init(project=self.args.wandb_project,
                                         config=self.args,
                                         id=self.wandb_run_id, # loaded from checkpoint
-                                        resume='must')
+                                        resume='must',
+                                        name=self.wandb_run_name)
             # TODO: do we want to relog the args?
             # wandb.log({'args': self.args})
         else:
             self.wandb_run = wandb.init(project=self.args.wandb_project,
-                                        config=self.args)
+                                        config=self.args,
+                                        name=self.wandb_run_name)
             self.wandb_run_id = self.wandb_run.id
             # serialize device string
-            args_copy = copy.deepcopy(self.args)
-            args_copy.device = str(args_copy.device)
-            wandb.log({'args': vars(args_copy)})
+            # don't do the following because there's a distinction between
+            # configs and metrics. Below code is treating the args as a metric.
+            # args_copy = copy.deepcopy(self.args)
+            # args_copy.device = str(args_copy.device)
+            # wandb.log({'args': vars(args_copy)})
     
     def _init_metrics(self):
         """Creates data structures for storing metrics."""
@@ -224,7 +242,7 @@ class Trainer():
         torch.save(self.lr_scheduler.state_dict(),
                    os.path.join(save_dir, 'lr_scheduler.pt'))
 
-        # save HF configs
+        # save args configs
         # config_file = os.path.join(save_dir, 'config.json')
         # with open(config_file, 'w') as f:
         #     json.dump(vars(self.model.config), f)
@@ -323,6 +341,7 @@ class Trainer():
             self.model.load_state_dict(
                 torch.load(os.path.join(save_dir, 'model.pt'),
                            map_location=map_location))
+            self.model.to(self.args.device)
 
         logging.info(f'Loaded model on {self.args.device}...')
         self.optimizer.load_state_dict(
@@ -356,6 +375,15 @@ class Trainer():
             total_loss = loss + triplet_loss
             total_loss.backward()
             reporting_dict['triplet_loss'] = triplet_loss.item()
+            reporting_dict['total_loss'] = total_loss.item()
+        # TODO: address the combination of options
+        elif self.args.impact_scalar:
+            impact_scalar = outputs[3]
+            if self.global_step % self.args.reporting_steps == 0:
+                dist_log(self.args, f'Impact scalar: {impact_scalar.item():.2f} at step {self.global_step}')
+            total_loss = loss + impact_scalar
+            total_loss.backward()
+            reporting_dict['impact_scalar'] = impact_scalar.item()
             reporting_dict['total_loss'] = total_loss.item()
         else:
             loss.backward()
@@ -443,13 +471,14 @@ class Trainer():
         self.metrics[split]['epoch_accuracies'].append(epoch_accuracy)
         
         dist_log(self.args, f'{split} epoch metrics at (epoch:batch) ({self.epoch}:{self.global_step}) - Loss {epoch_loss:.2f} - Accuracy - {epoch_accuracy:.2f}')
-        # TODO: determine why this isn't logging
-        self.log(
-                {
-                    f'{split}_epoch_loss': epoch_loss,
-                    f'{split}_epoch_accuracy': epoch_accuracy
-                },
-                step=self.global_step)
+        # # TODO: determine why this isn't logging
+        # # It wasn't logging because steps must increase monotonically
+        # self.log(
+        #         {
+        #             f'{split}_epoch_loss': epoch_loss,
+        #             f'{split}_epoch_accuracy': epoch_accuracy
+        #         },
+        #         step=self.global_step)
 
     def configure_optimizer(self):
         """Creates an optimizer (and potentially a learning rate scheduler) for the model."""
@@ -507,6 +536,8 @@ class Trainer():
                 )
 
                 # potentially evaluate on validation set
+                # TODO: new_best may be false when saving a model, even though loss may have improved
+                new_best = False
                 if self.args.val_steps > 0 and self.global_step % self.args.val_steps == 0:
                     # only run evaluation on rank 0 if using distributed training
                     if (self.args.distributed and self.args.local_rank
@@ -526,46 +557,43 @@ class Trainer():
                             )
                         self._report(split='val')
                         self._record_metrics(split='val')
+                    
+                    # early stopping
+                    # only run on rank 0 if using distributed training
+                    if (self.args.distributed and self.rank_0) or not self.args.distributed:
+                        # TODO: sync loss across ranks before deciding to save
+                        # on first iteration [-1] might out of range
+                        current_metric = self.best_metric
+                        if len(self.metrics['val']['epoch_loss_vals']) >= 1:
+                            current_metric = self.metrics['val'][
+                                'epoch_loss_vals'][-1]
+                        if self.best_metric > current_metric:
+                            self.best_metric = current_metric
+                            logging.info(
+                                f'New best loss of {self.best_metric:.2f}.'
+                            )
+                            new_best = True
+                            # reset early stopping counter
+                            self.early_stopping_counter = self.args.early_stopping_patience
+                        else:
+                            self.early_stopping_counter -= 1
+                            logging.info(
+                                f'No improvement in validation loss. Early stopping counter at {self.early_stopping_counter}'
+                            )
+                        # TODO: this can exit before saving the final checkpoint, should save before terminating
+                        # returning will send signal to other ranks to stop training
+                        if self.early_stopping_counter == 0:
+                            logging.info(
+                                f'Early stopping counter at 0. Stopping training on rank {self.args.local_rank}'
+                            )
+                            return None
 
-                    # save model checkpoint
-                    if self.args.num_checkpoints > 0:
-                        # TODO: refactor this into a separate function (too much nesting)
-                        # only run on rank 0 if using distributed training
-                        if (self.args.distributed and self.rank_0) or not self.args.distributed:
-                            # TODO: sync loss across ranks before deciding to save
-                            new_best = False
-                            # on first iteration [-1] might out of range
-                            current_loss = self.best_val_loss
-                            if len(self.metrics['val']['epoch_loss_vals']) >= 1:
-                                current_loss = self.metrics['val'][
-                                    'epoch_loss_vals'][-1]
-                            if self.best_val_loss > current_loss:
-                                self.best_val_loss = current_loss
-                                logging.info(
-                                    f'New best loss of {self.best_val_loss:.2f}. Saving model on rank {self.args.local_rank}.'
-                                )
-                                new_best = True
-                                # reset early stopping counter
-                                self.early_stopping_counter = self.args.early_stopping_patience
-                            else:
-                                self.early_stopping_counter -= 1
-                                logging.info(
-                                    f'No improvement in validation loss. Early stopping counter at {self.early_stopping_counter}'
-                                )
-                            self.save(best=new_best)
-                            # returning will send signal to other ranks to stop training
-                            if self.early_stopping_counter == 0:
-                                logging.info(
-                                    f'Early stopping counter at 0. Stopping training on rank {self.args.local_rank}'
-                                )
-                                return None
-
-                # # ensure all ranks are synced before moving on to next batch
-                # if self.args.distributed:
-                #     dist.barrier()
-                #     logging.debug(
-                #         f'Rank {self.args.local_rank} finished training step {epoch}:{idx} (global step: {self.global_step}) and barrier sync'
-                #     )
+                # potentially save model checkpoint
+                if self.args.num_checkpoints > 0 and self.global_step % self.args.save_steps == 0:
+                    # save model checkpoint if rank_0 or not distributed
+                    if self.rank_0_or_not_distributed:
+                        logging.info(f'Saving model on rank {self.args.local_rank}')
+                        self.save(best=new_best)
 
                 self.global_step += 1
 

@@ -2,21 +2,92 @@
 
 Examples:
     $ python -m charm.model.train_pt \
-        --triplet-loss \
-        --batch-size 16 \
+        --wandb-project change-point \
+        --epochs 20 \
+        --log-level INFO \
+        --seed 10 \
+        --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-class-reweight \
+        --window-size 10 \
+        --class-weights 1 50
+    
+    $ python -m charm.model.train_pt \
+        --batch-size 64 \
         --wandb-project social-orientation \
         --epochs 20 \
         --log-level INFO \
-        --seed 10
+        --seed 10 \
+        --val-steps 500 \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/circumplex \
+        --model-dir /mnt/swordfish-pool2/ccu/models/xlm-roberta-base-pt
 
     # distributed training
     $ nohup torchrun --nproc_per_node=3 --nnodes=1 \
         -m charm.model.train_pt \
-        --distributed --batch-size 16 --log-level INFO \
+        --distributed --batch-size 64 --log-level INFO \
+        --val-steps 200 \
         --epochs 20 --wandb-project social-orientation \
         --seed 10 \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/circumplex \
+        --model-dir /mnt/swordfish-pool2/ccu/models/xlm-roberta-base-pt \
         > train.log 2>&1 &
-
+    
+    $ CUDA_VISIBLE_DEVICES=0 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-impact-scalar \
+        --class-weight 25  --window-size 10 --impact-scalar > train_impact_scalar.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=0 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-triplet-loss \
+        --class-weight 25  --window-size 10 --triplet-loss > train_triplet_loss.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=1 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-high-reweight \
+        --class-weight 50  --window-size 10 > train_high_reweight.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=3 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point \
+        --class-weight 25  --window-size 10 > train.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=4 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-social-orientation \
+        --class-weight 25  --window-size 10 --social-orientation > train_social_orientation.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=5 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-medium-reweight \
+        --class-weight 12  --window-size 10 > train_medium_reweight.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=6 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-light-reweight \
+        --class-weight 2  --window-size 10 > train_light_reweight.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=7 nohup python -m charm.model.train_pt \
+        --wandb-project change-point --epochs 20 \
+        --log-level INFO --seed 10 --dataset change-point \
+        --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
+        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-light-reweight-high-window-impact-scalar \
+        --class-weight 2  --window-size 20 --impact-scalar > train_light_reweight_high_window_impact_scalar.log 2>&1 &
 TODOs:
 - figure out how to set the wandb loss as the best recorded loss instead of the ending loss
 - determine if it makes sense to resume training from a checkpoint with a lower learning rate
@@ -54,6 +125,10 @@ def handler(signum, frame):
 
 signal.signal(signal.SIGINT, handler)
 
+def hyperparameter_search(args):
+    """Run hyperparameter search."""
+    # TODO: implement this in a way that is compatible with the existing code
+    pass
 
 def pipeline(args):
     np.random.seed(args.seed)
@@ -62,7 +137,7 @@ def pipeline(args):
     args.world_size = None
     # set up distributed training
     if args.distributed:
-        dist.init_process_group("nccl")
+        dist.init_process_group("gloo")
         rank = dist.get_rank()
         args.local_rank = rank
         world_size = dist.get_world_size()
@@ -77,19 +152,25 @@ def pipeline(args):
              f'Training for {args.epochs} epochs on device: {args.device}.')
 
     # load data
-    train_loader, val_loader, args = get_data(args)
+    train_loader, val_loader, test_loader, args = get_data(args)
 
     # get appoximate number of training steps
     batches_per_epoch = len(train_loader)
     args.num_train_steps = batches_per_epoch * args.epochs
     args.num_warmup_steps = args.num_train_steps // 20  # 20% warmup
 
-    if args.triplet_loss:
+    # TODO: adjust learning rate as a function of number of devices and batch size
+
+    if args.triplet_loss or args.impact_scalar or args.social_orientation or (args.class_weight is not None):
         model = XLMRClassificationPlusTripletLoss.from_pretrained(
             'xlm-roberta-base',
             num_labels=len(args.id2label),
             id2label=args.id2label,
             label2id=args.label2id)
+        # this will enable things like triplet loss, impact scalar, social orientation, and class weighting
+        model.add_args(args)
+        if args.class_weight is not None:
+            dist_log(args, f'Using class weights: {args.class_weight}')
     else:
         model = AutoModelForSequenceClassification.from_pretrained(
             args.model_name_or_path,
@@ -112,7 +193,7 @@ def pipeline(args):
 
 
 def main(args):
-    metrics = pipeline(args)
+    pipeline(args)
 
 
 if __name__ == '__main__':

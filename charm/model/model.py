@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
+from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss, MSELoss
 from transformers import XLMRobertaModel, XLMRobertaPreTrainedModel
 
 from .utils import get_triples
@@ -30,6 +30,27 @@ class XLMRobertaClassificationHead(nn.Module):
         x = self.out_proj(x)
         return x
 
+class XLMRobertaRegressionHead(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        classifier_dropout = (config.classifier_dropout
+                              if config.classifier_dropout is not None else
+                              config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.out_proj = nn.Linear(config.hidden_size, 1)
+
+    def forward(self, features, **kwargs):
+        x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        x = self.dropout(x)
+        x = self.dense(x)
+        x = torch.tanh(x)
+        x = self.dropout(x)
+        x = self.out_proj(x)
+        return x
+
 
 class XLMRClassificationPlusTripletLoss(XLMRobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
@@ -45,6 +66,20 @@ class XLMRClassificationPlusTripletLoss(XLMRobertaPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+    def add_args(self, args):
+        self.args = args
+        if args.impact_scalar:
+            # add regressor head as trainable parameter
+            # TODO: probably a better way to do this
+            # Manually register XLMRobertaRegressionHead as a parameter
+            self.regressor = XLMRobertaRegressionHead(self.config)
+            self.regressor.requires_grad_(True)  # Set requires_grad to True for the regressor module
+            for name, param in self.regressor.named_parameters():
+                # Replace "." with "_" in parameter names
+                name = name.replace(".", "_")
+                # Register each parameter as a model parameter
+                self.register_parameter("regressor_" + name, nn.Parameter(param))
+    
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
@@ -60,6 +95,7 @@ class XLMRClassificationPlusTripletLoss(XLMRobertaPreTrainedModel):
         anchors: Optional[torch.LongTensor] = None,
         positives: Optional[torch.LongTensor] = None,
         negatives: Optional[torch.LongTensor] = None,
+        impact_scalar: Optional[torch.FloatTensor] = None,
     ) -> Tuple[torch.Tensor]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -82,6 +118,7 @@ class XLMRClassificationPlusTripletLoss(XLMRobertaPreTrainedModel):
 
         loss = None
         triplet_loss = None
+        impact_scalar_loss = None
         if labels is not None:
             if self.config.problem_type is None:
                 if self.num_labels > 1 and (labels.dtype == torch.long
@@ -91,9 +128,17 @@ class XLMRClassificationPlusTripletLoss(XLMRobertaPreTrainedModel):
                     self.config.problem_type = "multi_label_classification"
 
             if self.config.problem_type == "single_label_classification":
-                loss_fct = CrossEntropyLoss()
-                loss = loss_fct(logits.view(-1, self.num_labels),
-                                labels.view(-1))
+                # TODO: weight losses
+                if self.args.class_weight is None:
+                    weight = None
+                else:
+                    # TODO: generalize this to work with more than 2 classes
+                    # this was done so that wandb would log this parameter correctly (as a scalar)
+                    weight = [1.0, self.args.class_weight]
+                    weight = torch.tensor(weight).to(self.args.device)
+                loss_fct = CrossEntropyLoss(weight=weight)
+                
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
@@ -112,12 +157,20 @@ class XLMRClassificationPlusTripletLoss(XLMRobertaPreTrainedModel):
                 triplet_loss = F.triplet_margin_loss(anchor_embeddings,
                                                     positive_embeddings,
                                                     negative_embeddings,
-                                                    margin=1.0,
+                                                    margin=.3,
                                                     p=2.0,
                                                     eps=1e-06,
                                                     swap=False,
                                                     reduction='mean')
-        return (loss, logits, triplet_loss)
+            
+            # get the impact scalar loss if impact scalars are provided
+            if impact_scalar is not None:
+                # get regressor output
+                regressor_out = self.regressor(sequence_output)
+                loss_fct = MSELoss()
+                impact_scalar_loss = loss_fct(regressor_out.squeeze(), labels.float())
+
+        return (loss, logits, triplet_loss, impact_scalar_loss)
 
 if __name__ == "__main__":
     model = XLMRClassificationPlusTripletLoss.from_pretrained(

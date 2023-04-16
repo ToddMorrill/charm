@@ -1,0 +1,25 @@
+
+program: charm.model.train_pt
+command:
+  - ${env}
+  - python
+  - -m
+  - ${program}
+  - --epochs 20
+  - --batch-size 64
+  - --num-checkpoints 0
+  - 
+method: random
+project: change-point
+metric:
+  name: val_loss
+  goal: minimize
+parameters:
+  lr:
+    min: 0.000005
+    max: 0.0005
+  optimizer:
+    values: ["Adam", "AdamW", "SGD-Nesterov", "Adagrad", "Adadelta"]
+  window-size:
+    values: [2, 4, 8, 16]
+  
