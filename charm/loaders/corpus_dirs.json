@@ -1,0 +1,39 @@
+{
+	"source_data": {
+		"dev_cn": {
+			"LDC2022E18": [
+				"LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1",
+				"LDC2022E19_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R2_V1.0",
+				"LDC2022E19_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R2_V2.0",
+				"LDC2022E20_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R3_V1.0",
+				"LDC2023E03_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R4_V1.0",
+				"LDC2023E06_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R5_V1.0"
+			],	
+			"LDC2023E01": [
+				"LDC2022E22_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Source_Data"
+			],
+			"LDC2022E12": []
+		},
+		"test_cn": {
+			"LDC2023E07": [
+				"LDC2023E07_CCU_TA1_Mandarin_Chinese_Evaluation_Source_Data_V1.0"
+			]
+		}
+	},
+	"segments_files": {
+		"dev_cn": [
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V1.0/docs/segments.tab",
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V2.0/docs/segments.tab",
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V3.0/docs/segments.tab",
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V4.0/docs/segments.tab",
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V4.1/docs/segments.tab",
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V5.0/docs/segments.tab",
+			"LDC2022E18_CCU_TA1_Mandarin_Chinese_Development_Annotation_V5.1/docs/segments.tab",
+			"LDC2022E12_CCU_TA1_Mandarin_Chinese_Development_Annotation_Sample/docs/segments.tab",
+			"LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered/docs/segments.tab"
+		],
+		"test_cn": [
+			"LDC2023E07_CCU_TA1_Mandarin_Chinese_Evaluation_Source_Data_V1.0/docs/file_info.tab"
+		]
+	}
+}

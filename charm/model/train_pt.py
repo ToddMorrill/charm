@@ -40,12 +40,12 @@ Examples:
         --model-dir /mnt/swordfish-pool2/ccu/models/change-point-impact-scalar \
         --class-weight 25  --window-size 10 --impact-scalar > train_impact_scalar.log 2>&1 &
     
-    $ CUDA_VISIBLE_DEVICES=0 nohup python -m charm.model.train_pt \
-        --wandb-project change-point --epochs 20 \
-        --log-level INFO --seed 10 --dataset change-point \
+    $ CUDA_VISIBLE_DEVICES=2 python -m charm.model.train_pt \
+        --epochs 20 \
+        --log-level INFO --seed 0 --dataset change-point \
         --data-dir /mnt/swordfish-pool2/ccu/transformed/change-point \
-        --model-dir /mnt/swordfish-pool2/ccu/models/change-point-triplet-loss \
-        --class-weight 25  --window-size 10 --triplet-loss > train_triplet_loss.log 2>&1 &
+        --num-checkpoints 0 --save-steps 0 \
+        --class-weight 25  --window-size 10
     
     $ CUDA_VISIBLE_DEVICES=1 nohup python -m charm.model.train_pt \
         --wandb-project change-point --epochs 20 \
@@ -96,6 +96,7 @@ TODOs:
 import sys
 import logging
 import signal
+print('imported python modules')
 
 import numpy as np
 import torch
@@ -106,11 +107,16 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import transformers
 from transformers import AutoModelForSequenceClassification
 import pandas as pd
+print('imported ML modules')
 
 from .args import parse_args
+print('imported args module')
 from .trainer_pt import Trainer
+print('imported train')
 from .utils import get_data, dist_log
+print('imported utils')
 from .model import XLMRClassificationPlusTripletLoss
+print('imported DL model')
 
 transformers.logging.set_verbosity_warning()
 pd.options.mode.chained_assignment = None
@@ -193,6 +199,7 @@ def pipeline(args):
 
 
 def main(args):
+    logging.info('Starting pipeline.')
     pipeline(args)
 
 

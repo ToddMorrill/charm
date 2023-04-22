@@ -4,36 +4,40 @@ against the NIST scoring tool, selects a filtering procedure, and saves the
 predictions to disk.
 
 Examples:
-    $ python -m charm.model.predict \
-        --model-paths /mnt/swordfish-pool2/ccu/models/change-point \
-        --output-dir /mnt/swordfish-pool2/ccu/predictions \
-        --device 3
-    
-    $ python -m charm.model.predict \
-        --model-paths /mnt/swordfish-pool2/ccu/models/change-point-triplet-loss \
-        /mnt/swordfish-pool2/ccu/models/change-point-high-reweight \
-        --output-dir /mnt/swordfish-pool2/ccu/predictions \
-        --device 1
-
-    $ python -m charm.model.predict \
-        --model-paths /mnt/swordfish-pool2/ccu/models/change-point-light-reweight \
-        --output-dir /mnt/swordfish-pool2/ccu/predictions \
-        --device 6
-    
-    $ python -m charm.model.predict \
+    $ CUDA_VISIBLE_DEVICES=2,3 nohup python -m charm.model.predict \
         --model-paths /mnt/swordfish-pool2/ccu/models/change-point-medium-reweight \
         --output-dir /mnt/swordfish-pool2/ccu/predictions \
-        --device 5
-
-    $ python -m charm.model.predict \
-        --model-paths /mnt/swordfish-pool2/ccu/models/change-point-light-reweight-high-window-impact-scalar \
-        --output-dir /mnt/swordfish-pool2/ccu/predictions \
-        --device 7
+        --device 0 \
+        --final-eval \
+        --transcript whisper \
+        --parallel \
+        --batch-size 512 \
+        --num-workers 1 \
+        > eval_whisper.log 2>&1 &
     
-    $ python -m charm.model.predict \
-        --model-paths /mnt/swordfish-pool2/ccu/models/change-point-social-orientation \
+    $ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m charm.model.predict \
+        --model-paths /mnt/swordfish-pool2/ccu/models/change-point-medium-reweight \
         --output-dir /mnt/swordfish-pool2/ccu/predictions \
-        --device 7
+        --final-eval \
+        --transcript azure \
+        --parallel \
+        --batch-size 512 \
+        --num-workers 2 \
+        > eval_azure.log 2>&1 &
+    
+    $ CUDA_VISIBLE_DEVICES=0,1,2,3 nohup python -m charm.model.predict \
+        --model-paths /mnt/swordfish-pool2/ccu/models/change-point-medium-reweight \
+        --output-dir /mnt/swordfish-pool2/ccu/predictions \
+        --final-eval \
+        --transcript wav2vec \
+        --parallel \
+        --batch-size 512 \
+        --num-workers 1 \
+        > eval_wav2vec.log 2>&1 &
+
+TODO:
+- add ability to predict social orientation
+- distributed training support
 """
 import os
 import json
@@ -47,13 +51,14 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.nn.parallel import DataParallel
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 from tqdm import tqdm
 import wandb
 
 from .model import XLMRClassificationPlusTripletLoss
-from .utils import get_data
+from .utils import get_data, get_best_model, get_eval_dataloader, ChangePointDataset
 from ..loaders.ldc_data import load_ldc_data
 from .average_precision import calculate_average_precision, filter_system_preds
 
@@ -138,7 +143,8 @@ class Predictor(object):
             llr = []
             labels = []
             for batch in tqdm(loader):
-                labels.extend(batch['labels'])
+                if 'labels' in batch:
+                    labels.extend(batch['labels'])
                 # move data to device
                 batch = {k: v.to(self.args.device) for k, v in batch.items()}
 
@@ -172,10 +178,10 @@ def load_metadata():
     test_df = test_df.set_index(['index', 'file_id'])
     return train_df, val_df, test_df
 
-def load_reference_data():
+def load_reference_data(split='INTERNAL_VAL'):
     # load the reference data to be sure we've got all the data points
     data = load_ldc_data(False, True)
-    val_data = {k: v for k, v in data.items() if data[k]['split'] == 'val'}
+    val_data = {k: v for k, v in data.items() if split in data[k]['splits']}
     # test_data = {k: v for k, v in data.items() if data[k]['split'] == 'test'}
     refs = []
     for file_id in val_data:
@@ -195,6 +201,7 @@ def score_nist(refs, hyps):
                                     text_char_threshold=100,
                                     time_sec_threshold=10,
                                     filtering=filtering)
+        results[filtering]['harmonic_mean'] = statistics.harmonic_mean(results[filtering].values())
         mean_scores.append((filtering, statistics.harmonic_mean(results[filtering].values())))
     end = time.perf_counter()
     logging.info(f'Time taken to evaluation: {end - start:.2f} seconds')
@@ -273,10 +280,11 @@ def run_eval(predictor, val_loader, test_loader, val_df, test_df, val_refs, outp
 
 def eval_pipeline(args):
     predictor = Predictor(args.model_path)
-    # "resume" the wandb run so we can track metrics
-    wandb_run = wandb.init(project=predictor.args.wandb_project,
-                                    id=predictor.wandb_run_id, # loaded from checkpoint
-                                    resume='must')
+    if args.val:
+        # "resume" the wandb run so we can track metrics
+        wandb_run = wandb.init(project=predictor.args.wandb_project,
+                                        id=predictor.wandb_run_id, # loaded from checkpoint
+                                        resume='must')
     predictor.args.device = f'cuda:{args.device}'
     model = XLMRClassificationPlusTripletLoss.from_pretrained(
             predictor.args.model_name_or_path,
@@ -286,20 +294,102 @@ def eval_pipeline(args):
     # this will enable things like triplet loss, impact scalar, social orientation, and class weighting
     model.add_args(predictor.args)
     predictor.load_model(model)
-    # load data
-    train_loader, val_loader, test_loader, predictor.args = get_data(predictor.args)
+
+    if args.parallel:
+        # TODO: make these command line args
+        predictor.model = torch.nn.DataParallel(predictor.model)
+
+    if args.val or args.test:
+        # load data
+        train_loader, val_loader, test_loader, predictor.args = get_data(predictor.args)
+        #load metadata
+        train_df, val_df, test_df = load_metadata()
+
+        # load val reference data
+        val_refs = load_reference_data()
+
+        # run eval
+        run_eval(predictor, val_loader, test_loader, val_df, test_df, val_refs, args.output_dir)
+
+        # finish wandb run
+        wandb.finish()
+        return
     
-    #load metadata
-    train_df, val_df, test_df = load_metadata()
+    # load eval data
+    if args.final_eval:
+        logging.info('Running on final eval set...')
+        # sample to debug
+        eval_df = prepare_eval_data(args)
+        # create ChangePointDataset
+        eval_dataset = ChangePointDataset(eval_df, AutoTokenizer.from_pretrained(predictor.args.model_name_or_path), predictor.args.window_size, predictor.args.impact_scalar, predictor.args.social_orientation)
+        # dataloader
+        num_gpus = torch.cuda.device_count()
+        logging.info(f'Running on {num_gpus} GPUs with a batch size of {args.batch_size * num_gpus} and {args.num_workers*num_gpus} workers.')
+        eval_loader = get_eval_dataloader(batch_size=args.batch_size * num_gpus, num_workers=args.num_workers*num_gpus, dataset=eval_dataset)
+        batch = next(iter(eval_loader))
+        hyps, df = _run_eval(predictor, eval_loader, eval_df)
+        # filter predictions according to the best procedure
+        # TODO: generalize this to use the best filtering approach
+        final_eval_preds = filter_system_preds(hyps, text_char_threshold=100, time_sec_threshold=10, filtering='lowest')
+        logging.info('Saving final eval set results...')
+        dump_preds_results(final_eval_preds, df, predictor, args.output_dir, split=f'eval_{args.transcript}', results=None)
 
-    # load val reference data
-    val_refs = load_reference_data()
+def prepare_eval_data(args, cache=True):
+    # TODO: generalize this to work for any split
+    filepath = os.path.join(args.data_dir, f'LDC2023E07_{args.transcript}.csv')
+    if cache and os.path.exists(filepath):
+        logging.info(f'Loading cached data from {filepath}')
+        cache_df = pd.read_csv(filepath, index_col=0)
+        # reestablish the index
+        cache_df = cache_df.reset_index(drop=True).reset_index()
+        cache_df = cache_df.set_index(['index', 'file_id'])
+        return cache_df
+    
+    # otherwise load and process the data
+    data = load_ldc_data(False, True)
+    transcript = args.transcript
+    eval_data = {}
+    for file_id in data:
+        if 'EVALUATION_LDC2023E07' in data[file_id]['splits'] and data[file_id]['processed']:
+            eval_data[file_id] = data[file_id]
+            # only keep the transcript we want
+            if data[file_id]['data_type'] in ['video', 'audio']:
+                eval_data[file_id]['utterances'] = data[file_id]['utterances'][transcript]
 
-    # run eval
-    run_eval(predictor, val_loader, test_loader, val_df, test_df, val_refs, args.output_dir)
+    logging.info(f'Loaded {len(eval_data)} files for split EVALUATION_LDC2023E07')
 
-    # finish wandb run
-    wandb.finish()
+    df = pd.DataFrame.from_dict(eval_data, orient='index')
+
+    # convert to dataframe
+    utterance_df = df.drop(columns=['changepoints'])
+    utterance_df = utterance_df.explode('utterances')
+    logging.info(f'{len(utterance_df):,} utterances in evaluation dataset total.')
+    utterance_df = utterance_df.reset_index(drop=True)
+
+    utterance_df = pd.concat((utterance_df, pd.json_normalize(utterance_df['utterances'])), axis=1)
+    utterance_df = utterance_df.drop(columns=['utterances'])
+    # the annotated segment is called start and end as well as the timestamps for individual utterances
+    utterance_df.columns.values[2] = 'anno_start'
+    utterance_df.columns.values[3] = 'anno_end'
+
+    # set anno_start to be 0 and anno_end to be float('inf')
+    utterance_df['anno_start'] = 0
+    utterance_df['anno_end'] = float('inf')
+
+    # sort values by file_id and start to be safe
+    utterance_df = utterance_df.sort_values(by=['file_id', 'start'], ascending=True)
+    utterance_df = utterance_df.reset_index(drop=True)
+    # give ourselves an index to work with
+    utterance_df = utterance_df.reset_index()
+    # try to put an index on both the index and the file_id to speed up the slicing
+    utterance_df = utterance_df.set_index(['index', 'file_id'])
+    
+    # save to cache
+    if cache:
+        logging.info(f'Saving cached data to {filepath}')
+        utterance_df.to_csv(filepath, index=True)
+    return utterance_df
+
 
 def main(args):
     for model_path in args.model_paths:
@@ -314,13 +404,20 @@ if __name__ == "__main__":
         required=True,
         nargs='*',
         help='The path to the model to use for prediction.')
+    parser.add_argument('--data-dir', type=os.path.expanduser, default='/mnt/swordfish-pool2/ccu/transformed/change-point', help='The path to the data directory.')
     parser.add_argument(
         '--output-dir',
         type=os.path.expanduser,
         default='/mnt/swordfish-pool2/ccu/predictions',
         help='The path to the output directory.')
     parser.add_argument('--device', type=int, default=0, help='The GPU device to use.')
-
+    parser.add_argument('--val', action='store_true', default=False, help='Evaluate on the validation set.')
+    parser.add_argument('--test', action='store_true', default=False, help='Evaluate on the test set. Note that this will also evaluate on the validation set to pick the best filtering method.')
+    parser.add_argument('--final-eval', action='store_true', default=False, help='Evaluate on the final evaluation set. Note that this will also evaluate on the validation set to pick the best filtering method.')
+    parser.add_argument('--transcript', required=True, help='The transcript to use for evaluation. Must be one of {whisper, azure, wav2vec}.')
+    parser.add_argument('--parallel', action='store_true', default=False, help='Run evaluation in parallel on all available GPUs.')
+    parser.add_argument('--num-workers', type=int, default=1, help='The number of workers to use for the dataloader per GPU device.')
+    parser.add_argument('--batch-size', type=int, default=512, help='The batch size to use for evaluation per device.')
     args = parser.parse_args()
     logging.basicConfig(datefmt='%Y-%m-%d %I:%M:%S',
                         format='%(asctime)s %(levelname)s %(message)s',

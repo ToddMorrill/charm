@@ -20,11 +20,16 @@ import json
 import pandas as pd
 import torch
 import torch.nn as nn
+print('imported pandas, torch')
+
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.optim as optim
 import torch.distributed as dist
-import torchmetrics
+print('imported torch dist')
+# import torchmetrics
+print('imported torchmetrics')
 from tqdm import tqdm
+logging.info('importing wandb')
 import wandb
 
 from .utils import get_optimizer, dist_log

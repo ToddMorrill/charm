@@ -2,6 +2,7 @@ import logging
 from functools import partial
 import os
 import random
+import json
 from functools import cache
 
 from datasets import load_dataset
@@ -72,6 +73,7 @@ class ChangePointDataset(Dataset):
                  impact_scalar=False,
                  social_orientation=False):
         self.df = df
+        self.labeled = 'labels' in self.df.columns
         self.tokenizer = tokenizer
         self.max_len = tokenizer.model_max_length
         self.window_size = window_size
@@ -90,6 +92,9 @@ class ChangePointDataset(Dataset):
                 lambda x: f'[{x}]') + ' ' + self.df['text']
         else:
             self.df['text_final'] = self.df['text']
+        
+        # M01004G0B from the evaluation set is missing the text field, fill with empty string
+        self.df['text_final'] = self.df['text_final'].fillna('')
 
         self.df['input_ids'] = self.tokenizer(
             self.df['text_final'].values.tolist(),
@@ -131,7 +136,7 @@ class ChangePointDataset(Dataset):
         # times the number of filenames
         return len(self.df)
 
-    @cache
+    # @cache
     def __getitem__(self, idx):
         # TODO: speed this up somehow
         file_id = self.idx_file_id_map[idx]
@@ -154,6 +159,12 @@ class ChangePointDataset(Dataset):
         tokens = self._get_tokens(input_id_list)
         # print(f'tokens is {tokens}')
 
+        # if labels not present just return input_ids
+        if not self.labeled:
+            return {
+                'input_ids': tokens,
+            }
+        
         # label should be the max label in the window (i.e. greedily label change points)
         # i.e. if any of the utterances in the window are change points, then the window is a change point
         label = utterances['labels'].max()
@@ -364,6 +375,17 @@ def get_dataloaders(args,
         return train_dataloader, val_dataloader, test_dataloader
     return train_dataloader, val_dataloader, None
 
+def get_eval_dataloader(batch_size, num_workers, dataset):
+    # TODO: generalize this to take in the args as the model for the tokenizer
+    tokenizer = AutoTokenizer.from_pretrained('xlm-roberta-base')
+    collate = DataCollatorWithPadding(tokenizer=tokenizer)
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=collate)
 
 def get_optimizer(args, model, **kwargs):
     if args.optimizer == 'SGD':
@@ -508,3 +530,28 @@ def dist_log(args, message):
         logging.info(message)
     elif not args.distributed:
         logging.info(message)
+    
+def get_best_model(predictions_dir, modality):
+    """Identifies the model and filtering method that produces the best
+    performance on the specified modality, which is one of {'text', 'audio', 'video', 'all'}.}"""
+    model_dirs = os.listdir(predictions_dir)
+    # load val_results.json if present
+    val_results = {}
+    for model_dir in model_dirs:
+        val_results_filepath = os.path.join(predictions_dir, model_dir, 'val_results.json')
+        if os.path.exists(val_results_filepath):
+            with open(val_results_filepath, 'r') as f:
+                val_results[model_dir] = json.load(f)
+    df = pd.DataFrame.from_dict(val_results, orient='index')#.reset_index().rename(columns={'index': 'model'})
+
+    df = df.stack().to_frame().rename(columns={0: 'val_results'}).reset_index().rename(columns={'level_0':'model', 'level_1': 'filtering'})
+    df = pd.concat([df.drop(columns=['val_results']), pd.json_normalize(df['val_results'])], axis=1)
+    # group by model and select filtering method with the highest text score
+    best_df = df.groupby('model').apply(lambda x: x.loc[x[modality].idxmax()]).reset_index(drop=True)
+    # go with change-point-medium-reweight for now
+    best_row = best_df.iloc[best_df['text'].idxmax()]
+    return best_row # best_row['model'], best_row['filtering'], best_row['text'], best_row['audio'], best_row['video']#, best_row['all']
+
+if __name__ == '__main__':
+    predictions_dir = '/mnt/swordfish-pool2/ccu/predictions'
+    print(get_best_model(predictions_dir, modality='video'))

@@ -171,3 +171,5 @@ output_new.txt
 ccu-config.yaml
 wandb
 lightning_logs
+
+asr_example
