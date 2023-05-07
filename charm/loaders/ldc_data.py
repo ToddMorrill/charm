@@ -501,4 +501,4 @@ def load_ldc_data(include_preprocessed_audio_and_video=False, use_cache=False):
 
 
 if __name__ == '__main__':
-    exit(load_ldc_data(False, True))
+    load_ldc_data(False, True)

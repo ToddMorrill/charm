@@ -5,7 +5,9 @@ The circumplex theory work attempts to assign social orientation tags {Assured-D
 3. Providing novel signal for an ensemble system
 
 ## GPT Data Annotation
-`GPT_annotation.ipynb` walks through some preliminary assessments of different language models for the social orientation tagging task.
+`GPT_annotation.ipynb` walks through some preliminary assessments of different language models for the social orientation tagging task with a single sample conversation.
+
+`patch_speakers.ipynb` pulls in speaker information for all text conversations, where available, and updates tm3229-cache.pkl.
 
 `prepare_text_conversatons.ipynb` generates all the requests that will be sent to OpenAI's API for the social orientation tagging task.
 
