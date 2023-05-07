@@ -173,3 +173,4 @@ wandb
 lightning_logs
 
 asr_example
+openai_credentials.json
