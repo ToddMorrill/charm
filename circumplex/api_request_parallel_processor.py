@@ -26,6 +26,57 @@ python examples/api_request_parallel_processor.py \
   --token_encoding_name cl100k_base \
   --max_attempts 5 \
   --logging_level 20
+
+# https://platform.openai.com/docs/guides/rate-limits/overview
+Bump these down a little to be safe
+  --max_requests_per_minute 200 \
+  --max_tokens_per_minute 40000 \
+to
+  --max_requests_per_minute 175 \
+  --max_tokens_per_minute 35000 \
+
+python api_request_parallel_processor.py \
+  --requests_filepath data/train_shard_0_sample.jsonl \
+  --save_filepath output/train_shard_0_sample_results.jsonl \
+  --request_url https://api.openai.com/v1/chat/completions \
+  --max_requests_per_minute 175 \
+  --max_tokens_per_minute 35000 \
+  --model gpt-4 \
+  --temperature 0. \
+  --top_p 1.0 \
+  --token_encoding_name gpt-4 \
+  --max_attempts 5 \
+  --logging_level 10
+
+nohup \
+python api_request_parallel_processor.py \
+  --requests_filepath data/train_shard_0.jsonl \
+  --save_filepath output/train_shard_0_results.jsonl \
+  --request_url https://api.openai.com/v1/chat/completions \
+  --max_requests_per_minute 3000 \
+  --max_tokens_per_minute 75000 \
+  --model gpt-3.5-turbo \
+  --temperature 0.7 \
+  --top_p 1.0 \
+  --token_encoding_name gpt-3.5-turbo \
+  --max_attempts 5 \
+  --logging_level 20 \
+> output.log 2>&1 &
+
+nohup \
+python api_request_parallel_processor.py \
+  --requests_filepath data/train_shard_0_sample.jsonl \
+  --save_filepath output/train_shard_0_sample_results.jsonl \
+  --request_url https://api.openai.com/v1/chat/completions \
+  --max_requests_per_minute 3000 \
+  --max_tokens_per_minute 75000 \
+  --model gpt-3.5-turbo \
+  --temperature 0.7 \
+  --top_p 1.0 \
+  --token_encoding_name gpt-3.5-turbo \
+  --max_attempts 5 \
+  --logging_level 20 \
+> output.log 2>&1 &
 ```
 
 nohup \
@@ -115,6 +166,8 @@ import tiktoken  # for counting tokens
 import time  # for sleeping after rate limit is hit
 from dataclasses import dataclass  # for storing API inputs, outputs, and metadata
 
+import utils
+
 
 async def process_api_requests_from_file(
     requests_filepath: str,
@@ -123,6 +176,9 @@ async def process_api_requests_from_file(
     api_key: str,
     max_requests_per_minute: float,
     max_tokens_per_minute: float,
+    model: str,
+    temperature: float,
+    top_p: float,
     token_encoding_name: str,
     max_attempts: int,
     logging_level: int,
@@ -176,16 +232,17 @@ async def process_api_requests_from_file(
                         # get new request
                         file_id, messages = json.loads(next(requests))
                         request_json = {
-                            "model": "gpt-3.5-turbo",
+                            "model": model,
                             "messages": messages,
-                            "temperature": 0.0,
-                            "top_p": 0.0,
+                            "temperature": temperature,
+                            "top_p": top_p,
                         }
                         next_request = APIRequest(
                             file_id=file_id,
                             task_id=next(task_id_generator),
                             request_json=request_json,
-                            token_consumption=num_tokens_from_messages(messages),
+                            token_consumption=utils.num_tokens_from_messages(
+                                messages, token_encoding_name),
                             attempts_left=max_attempts,
                         )
                         status_tracker.num_tasks_started += 1
@@ -285,6 +342,10 @@ class StatusTracker:
     time_of_last_rate_limit_error: int = 0  # used to cool off after hitting rate limits
 
 
+def exception_to_dict(exception):
+    return {"type": type(exception).__name__, "message": str(exception)}
+
+
 @dataclass
 class APIRequest:
     """Stores an API request's inputs, outputs, and other metadata. Contains a method to make an API call."""
@@ -308,7 +369,9 @@ class APIRequest:
         logging.info(f"Starting request #{self.task_id}")
         error = None
         try:
-            async with aiohttp.ClientSession() as session:
+            # 15 minute timeout
+            timeout = aiohttp.ClientTimeout(total=900)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url=request_url,
                                         headers=request_header,
                                         json=self.request_json) as response:
@@ -330,6 +393,9 @@ class APIRequest:
             status_tracker.num_other_errors += 1
             error = e
         if error:
+            # convert error to string to save to JSON
+            error = exception_to_dict(
+                error)  # Convert the exception to a dictionary
             self.result.append(error)
             if self.attempts_left:
                 retry_queue.put_nowait(self)
@@ -342,7 +408,8 @@ class APIRequest:
                 status_tracker.num_tasks_in_progress -= 1
                 status_tracker.num_tasks_failed += 1
         else:
-            append_to_jsonl([self.file_id, self.request_json, response], save_filepath)
+            append_to_jsonl([self.file_id, self.request_json, response],
+                            save_filepath)
             status_tracker.num_tasks_in_progress -= 1
             status_tracker.num_tasks_succeeded += 1
             logging.debug(f"Request {self.task_id} saved to {save_filepath}")
@@ -365,27 +432,27 @@ def append_to_jsonl(data, filename: str) -> None:
 
 
 # measure prompt length and split as needed
-def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
-    """Returns the number of tokens used by a list of messages."""
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        encoding = tiktoken.get_encoding("cl100k_base")
-    if model == "gpt-3.5-turbo-0301":  # note: future models may deviate from this
-        num_tokens = 0
-        for message in messages:
-            num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
-            for key, value in message.items():
-                num_tokens += len(encoding.encode(value))
-                if key == "name":  # if there's a name, the role is omitted
-                    num_tokens += -1  # role is always required and always 1 token
-        num_tokens += 2  # every reply is primed with <im_start>assistant
-        return num_tokens
-    else:
-        raise NotImplementedError(
-            f"""num_tokens_from_messages() is not presently implemented for model {model}.
-    See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
-        )
+# def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
+#     """Returns the number of tokens used by a list of messages."""
+#     try:
+#         encoding = tiktoken.encoding_for_model(model)
+#     except KeyError:
+#         encoding = tiktoken.get_encoding("cl100k_base")
+#     if model == "gpt-3.5-turbo-0301":  # note: future models may deviate from this
+#         num_tokens = 0
+#         for message in messages:
+#             num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
+#             for key, value in message.items():
+#                 num_tokens += len(encoding.encode(value))
+#                 if key == "name":  # if there's a name, the role is omitted
+#                     num_tokens += -1  # role is always required and always 1 token
+#         num_tokens += 2  # every reply is primed with <im_start>assistant
+#         return num_tokens
+#     else:
+#         raise NotImplementedError(
+#             f"""num_tokens_from_messages() is not presently implemented for model {model}.
+#     See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+#         )
 
 
 def task_id_generator_function():
@@ -413,6 +480,9 @@ if __name__ == "__main__":
                         type=int,
                         default=250_000 * 0.5)
     parser.add_argument("--token_encoding_name", default="cl100k_base")
+    parser.add_argument("--model", type=str, default='gpt-4')
+    parser.add_argument("--temperature", type=float, default=0.2)
+    parser.add_argument("--top_p", type=float, default=1.0)
     parser.add_argument("--max_attempts", type=int, default=5)
     parser.add_argument("--logging_level", default=logging.INFO)
     args = parser.parse_args()
@@ -430,6 +500,9 @@ if __name__ == "__main__":
             api_key=args.api_key,
             max_requests_per_minute=float(args.max_requests_per_minute),
             max_tokens_per_minute=float(args.max_tokens_per_minute),
+            model=args.model,
+            temperature=args.temperature,
+            top_p=args.top_p,
             token_encoding_name=args.token_encoding_name,
             max_attempts=int(args.max_attempts),
             logging_level=int(args.logging_level),

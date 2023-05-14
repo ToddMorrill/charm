@@ -20,4 +20,4 @@ evaluate
 datasets
 torchmetrics
 lightning
-langchain
+tabulate

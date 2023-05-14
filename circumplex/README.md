@@ -19,6 +19,9 @@ The circumplex theory work attempts to assign social orientation tags {Assured-D
 - would need to do some digging to determine which file_id the current example in the prompt is from
 - it's definitely from a text conversation where we knew the speaker IDs
 
+`utils.py` contains helpful supporting code such as the parser for the GPT response.
+
 `prompt_speaker_unknown.txt` is an addendum you can use to get annotations for speaker IDs (and social orientation tags) for conversations where you don't know the speaker IDs
 - this transcript is from LDC2022E11_CCU_TA1_Mandarin_Chinese_Development_Source_Data_R1/data/audio/M0100053I.flac.ldcc
 - there is a change point occurring in the middle of this transcript
+
