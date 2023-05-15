@@ -1,0 +1,39 @@
+It's also possible that a speaker number is unknown for an utterance, in which case you should assign speaker numbers to the utterances. Many conversations will have 2 speakers but some will have 3 or more. For example, here is the expected input and output format for such a conversation.
+
+Input:
+Speaker unknown (1): 我前一阵子他前一阵子跟我写信
+Speaker unknown (2): 我一阵子碰到你弟弟了
+Speaker unknown (3): 是吧
+Speaker unknown (4): 嗯
+Speaker unknown (5): 我一日没有给我们家写信
+Speaker unknown (6): 你知道吗
+Speaker unknown (7): 对对他就问我
+Speaker unknown (8): 我说我这阵子比较忙
+Speaker unknown (9): 我也没有
+Speaker unknown (10): 本来我想的那个跟你写个信的
+Speaker unknown (11): 但是这边乱糟糟的
+Speaker unknown (12): 没办法
+Speaker unknown (13): 嗯
+Speaker unknown (14): 用不下来
+Speaker unknown (15): 一直都是从过春节之后
+Speaker unknown (16): 一直到现在一直这样
+
+Output:
+Speaker 1 (1): Unassuming-Ingenuous - The speaker shares a personal experience about receiving a letter from someone.
+Speaker 2 (2): Warm-Agreeable - The speaker shares their own experience of meeting the listener's sibling.
+Speaker 1 (3): Unassured-Submissive - The speaker responds with a simple "是吧" which indicates a lack of confidence or assertiveness.
+Speaker 2 (4): Unassured-Submissive - The speaker responds with a simple "嗯" which indicates a lack of confidence or assertiveness.
+Speaker 1 (5): Unassuming-Ingenuous - The speaker admits that they haven't written a letter to their family in a day.
+Speaker 1 (6): Warm-Agreeable - The speaker seeks validation from the listener by asking if they know about it.
+Speaker 2 (7): Warm-Agreeable - The speaker confirms what the listener asked and mentions that they were asked about it.
+Speaker 2 (8): Unassured-Submissive - The speaker explains that they've been busy recently as a reason for not writing a letter.
+Speaker 2 (9): Unassured-Submissive - The speaker admits that they also haven't written a letter.
+Speaker 2 (10): Warm-Agreeable - The speaker originally planned to write a letter to the listener.
+Speaker 2 (11): Unassured-Submissive - The speaker explains that their current situation is chaotic.
+Speaker 2 (12): Unassured-Submissive - The speaker expresses a feeling of helplessness with "没办法."
+Speaker 1 (13): Unassured-Submissive - The speaker responds with a simple "嗯" which indicates a lack of confidence or assertiveness.
+Speaker 2 (14): Unassured-Submissive - The speaker explains that they couldn't find the time to write the letter.
+Speaker 2 (15): Unassuming-Ingenuous - The speaker shares that their situation has been like this since the Spring Festival.
+Speaker 2 (16): Unassured-Submissive - The speaker reiterates that their situation has been this way until now.
+---
+Input:

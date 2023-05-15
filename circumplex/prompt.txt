@@ -16,20 +16,44 @@ Cold - Believes people should fend for themselves, doesn't fall for sob-stories,
 
 Arrogant-Calculating - Flaunts what they have, boasts and brags, will plot and scheme to get ahead, willing to exploit others for own benefit, is big-headed, is tricky, is boisterous, is conniving / calculating, is conceited, is crafty / cunning, is cocky, is manipulative of others
 ---
-In the following conversation, each line corresponds to a speaker number, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag. Identify the utterance by its speaker number and utterance ID, and provide a brief explanation. For example here is the expected input and output format for a sample conversation.
+In the following conversation, each row corresponds to an Utterance ID, a Speaker ID, and the Text spoken. For each utterance, assign a social orientation tag. Identify the utterance by its Utterance ID and Speaker ID. For example, here is the expected input and output format for a sample conversation.
 
 Input:
-Speaker 1 (1): 在不 (手机QQ可以视频聊天啦! http://mobile.qq.com )
-Speaker 2 (2): 在
-Speaker 1 (3): 今天和姨妈视频来着，刚知道这些事
-Speaker 2 (4): 我很无奈
-Speaker 2 (5): 真是不明白，本来他沾光的事情，怎么就成了这样了
+| Utterance ID | Speaker ID | Text |
+| --- | --- | --- |
+| 1 | 1 | 在不 (手机QQ可以视频聊天啦! http://mobile.qq.com ) |
+| 2 | 2 | 在 |
+| 3 | 1 | 今天和姨妈视频来着，刚知道这些事 |
+| 4 | 2 | 我很无奈 |
+| 5 | 2 | 真是不明白，本来他沾光的事情，怎么就成了这样了 |
 
 Output:
-Speaker 1 (1): Aloof-Introverted - The speaker is sharing a message about a new feature on mobile QQ.
-Speaker 2 (2): Unassured-Submissive - The speaker responds with a simple "在" which indicates a lack of confidence or assertiveness.
-Speaker 1 (3): Warm-Agreeable - The speaker shares a personal experience with the listener and uses a friendly tone.
-Speaker 2 (4): Unassured-Submissive - The speaker expresses a feeling of helplessness.
-Speaker 2 (5): Cold - The speaker expresses a lack of understanding and shows no sympathy for the situation.
+| Utterance ID | Speaker ID | Label |
+| --- | --- | --- |
+| 1 | 1 | Aloof-Introverted |
+| 2 | 2 | Unassured-Submissive |
+| 3 | 1 | Warm-Agreeable |
+| 4 | 2 | Unassured-Submissive |
+| 5 | 2 | Cold |
+---
+It's also possible that a speaker number is unknown for an utterance, in which case you should assign Speaker IDs to the utterances. Many conversations will have 2 speakers but some will have 3 or more. For example, here is the expected input and output format for such a conversation.
+
+Input:
+| Utterance ID | Speaker ID | Text |
+| --- | --- | --- |
+| 6 | unknown | 你知道吗 |
+| 7 | unknown | 对对他就问我 |
+| 8 | unknown | 我说我这阵子比较忙 |
+| 9 | unknown | 我也没有 |
+| 10 | unknown | 本来我想的那个跟你写个信的 |
+
+Output:
+| Utterance ID | Speaker ID | Label |
+| --- | --- | --- |
+| 6 | 1 | Warm-Agreeable |
+| 7 | 2 | Warm-Agreeable |
+| 8 | 2 | Unassured-Submissive |
+| 9 | 2 | Unassured-Submissive |
+| 10 | 2 | Warm-Agreeable |
 ---
 Input:

@@ -1,68 +1,8 @@
-# charm
-DARPA CHARM project repo
+# CHARM
+Repository for work done on the [DARPA CCU project](https://www.darpa.mil/news-events/2021-05-03a), where CHARM is the name of the Columbia University team and stands for Cross-Cultural Harmony through Affect and Response Mediation.
 
-### CCU Library Installation
-```
-export CCU_VERSION=1.1
-export ARTIFACTORY_USERNAME=tm3229
-export ARTIFACTORY_APIKEY=<copy-from-artifactory>
-pip install https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_APIKEY}@artifactory.sri.com/artifactory/cirano-pypi-local/ccu-${CCU_VERSION}-py3-none-any.whl
-```
-
-### Evaluation
-Verify the correctness of the reference directory:
-```
-CCU_scoring validate-ref -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered
-
-# NB: this won't work if the file_ids in system_input.index.tab don't match system_output.index.tab
-CCU_scoring validate-cd -s ~/Documents/data/charm/transformed/predictions/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559 -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered
-
-mkdir -p ~/Documents/data/charm/transformed/scores/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559
-CCU_scoring score-cd -s ~/Documents/data/charm/transformed/predictions/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559 \
-    -ref ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered \
-    -i ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered/index_files/COMPLETE.scoring.index.tab \
-    -o ~/Documents/data/charm/transformed/scores/CCU_P1_TA1_CD_COL_LDC2022E22-V1_20221128_150559
-
-# can also evaluate all submissions with
-stdbuf -o0 .charm/eval/eval_submissions.sh ~/Documents/data/charm/transformed/predictions \
-        ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered \
-        ~/Documents/data/charm/raw/LDC2023E01_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Annotation_Unsequestered/index_files/COMPLETE.scoring.index.tab \
-        ~/Documents/data/charm/transformed/scores
-
-```
-
-### Untar submissions
-```
-ls * |xargs -n1 tar -xvf
-```
-
-### Stripping LDC headers from .mp4 files
-```
-INPUT_FILE=~/Documents/data/charm/raw/LDC2022E22_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Source_Data/data/video/M01003YBL.mp4.ldcc
-OUTPUT_FILE=M01003YBL.mp4
-dd if=$INPUT_FILE of=$OUTPUT_FILE ibs=1024 skip=1
-
-INPUT_FILE=~/Documents/data/charm/raw/LDC2022E22_CCU_TA1_Mandarin_Chinese_Mini_Evaluation_Source_Data/data/video/M010040RH.mp4.ldcc
-OUTPUT_FILE=M010040RH.mp4
-dd if=$INPUT_FILE of=$OUTPUT_FILE ibs=1024 skip=1
-tail --bytes=+1025 $INPUT_FILE > $OUTPUT_FILE
-```
-
-### Whisper
-```
-whisper M010040RH.mp4 --language Chinese --task translate --model large
-```
-### Data
-Text conversations can be downloaded from Google Drive [here](https://drive.google.com/drive/folders/1y3JdISN1EapNNxGM_mMN_xsQ2nuIgJiY) and then the XML conversation files can be prepared into text documents using
-```
-INPUTDIR=~/Documents/datasets/charm/raw/ltf
-OUTPUTDIR=~/Documents/datasets/charm/transformed/rsd
-<!-- mkdir -p $OUTPUTDIR -->
-./ltf2rsd.perl -o $OUTPUTDIR $INPUTDIR
-``` 
-
-### Environment setup
-You can install the necessary Python dependencies (in a new virtual environment) by running
+## Environment setup
+You can install the necessary Python dependencies, including installing the `charm` Python library in this repository, (in a new virtual environment) by running
 ```
 python3 -m venv .venv
 source .venv/bin/activate
@@ -73,3 +13,15 @@ python -m ipykernel install --user --name charm --display-name "Python (CHARM)"
 # optionally launch Jupyter Lab
 jupyter lab
 ```
+
+## Layout of the repository
+The core directories are as follows:
+- `charm`: Python library for the project, with the following subdirectories:
+    - `model`: subdirectory that contains all code for the social orientation and change point models. `train_pt.py` is the main entry point into all training code. See the module level docstring of that file for more details on how to train models.
+    - `data`: contains code that prepared a metadata file for navigating the LDC data releases, which is now largely supplanted by the code in the `loaders` directory, which is a copy of the LDC data loader utilities written by Amith Ananthram and Ivan Dewerpe.
+    - `eval`: contains a custom implementation of LDC's AP scoring function (`eval.py`) as well as some code used for interfacing with NIST's scoring tools.
+- `circumplex`: contains code for generating the GPT annotated social orienation dataset. See that directory's `README.md` for more details.
+- `integration`: contains Dockerfiles and other code for building our frontend and backend systems that interface with CCU queues and run our machine learning models, respectively. See `README.md` in that directory for more details.
+- `demo`: contains code for the demo video that prepared for the March 2023 PI meeting.
+- `miscellaneous`: contains various notebooks for ad-hoc analysis.
+- `reports`: contains various reports and presentations that were prepared for the project.

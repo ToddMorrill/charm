@@ -1,0 +1,35 @@
+Circumplex theory is a social psychology based theory that characterizes social interactions between speakers. The social orientation tagset includes: {Assured-Dominant, Gregarious-Extraverted, Warm-Agreeable, Unassuming-Ingenuous, Unassured-Submissive, Aloof-Introverted, Cold, Arrogant-Calculating}, which are defined below in more detail.
+
+Assured-Dominant - Demands to be the center of interest, demands attention, does most of the talking, speaks loudly, is firm, is self-confident, is forceful, is ambitious, is assertive, is persistent, is domineering, not self-conscious
+
+Gregarious-Extraverted - Feels comfortable around people, starts conversations, talks to a lot of different people, loves large groups, is friendly, is enthusiastic, is warm, is extraverted, is good-natured, is cheerful / happy, is pleasant, is outgoing, is approachable, is not shy, is "lively"
+
+Warm-Agreeable - is interested in people, reassures others, inquires about others' well-being, gets along well with others, is kind, is polite and courteous, is sympathetic, is respectful, is tender-hearted, is cooperative, is appreciative, is accommodating, is gentle, is charitable
+
+Unassuming-Ingenuous - Tolerates a lot from others, takes things as they come, tells the truth, thinks of others first, does not brag or boast, seldom stretches the truth, does not scheme or plot, is modest, is trustworthy, is unassuming, is honest, not self-centered, is sincere, not demanding, is straightforward
+
+Unassured-Submissive - Speaks softly, lets others finish what they are saying, dislikes being the center of attention, doubts themselves, not especially thorough, doesn’t like to work too hard / will give up easily, is impractical, is timid, is inconsistent, is weak, is disorganized, is not authoritative, is a bit lazy, is not forceful
+
+Aloof-Introverted - Is quiet, especially around strangers, is a very private person, doesn't talk a lot / has little to say, doesn’t smile much, doesn’t reveal much about themselves, is not demonstrative (verbally or non-verbally), is distant, is shy, is impersonal, is introverted, is disinterested in others, is bashful, is not very social, is focused inward
+
+Cold - Believes people should fend for themselves, doesn't fall for sob-stories, is not interested in other people's problems, not warm toward others, is cruel, is ruthless, is cold-hearted, is hard-hearted, is unsympathetic, is uncharitable
+
+Arrogant-Calculating - Flaunts what they have, boasts and brags, will plot and scheme to get ahead, willing to exploit others for own benefit, is big-headed, is tricky, is boisterous, is conniving / calculating, is conceited, is crafty / cunning, is cocky, is manipulative of others
+---
+In the following conversation, each line corresponds to a speaker number, an utterance ID, and the text spoken. For each utterance, assign a social orientation tag. Identify the utterance by its speaker number and utterance ID, and provide a brief explanation. For example here is the expected input and output format for a sample conversation.
+
+Input:
+Speaker 1 (1): 在不 (手机QQ可以视频聊天啦! http://mobile.qq.com )
+Speaker 2 (2): 在
+Speaker 1 (3): 今天和姨妈视频来着，刚知道这些事
+Speaker 2 (4): 我很无奈
+Speaker 2 (5): 真是不明白，本来他沾光的事情，怎么就成了这样了
+
+Output:
+Speaker 1 (1): Aloof-Introverted - The speaker is sharing a message about a new feature on mobile QQ.
+Speaker 2 (2): Unassured-Submissive - The speaker responds with a simple "在" which indicates a lack of confidence or assertiveness.
+Speaker 1 (3): Warm-Agreeable - The speaker shares a personal experience with the listener and uses a friendly tone.
+Speaker 2 (4): Unassured-Submissive - The speaker expresses a feeling of helplessness.
+Speaker 2 (5): Cold - The speaker expresses a lack of understanding and shows no sympathy for the situation.
+---
+Input:
