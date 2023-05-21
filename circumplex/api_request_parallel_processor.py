@@ -230,7 +230,10 @@ async def process_api_requests_from_file(
                 elif file_not_finished:
                     try:
                         # get new request
-                        file_id, messages = json.loads(next(requests))
+                        chunk_dict = json.loads(next(requests))
+                        file_id, unique_id, messages = chunk_dict[
+                            'file_id'], chunk_dict['chunk_id'], chunk_dict[
+                                'messages']
                         request_json = {
                             "model": model,
                             "messages": messages,
@@ -239,6 +242,7 @@ async def process_api_requests_from_file(
                         }
                         next_request = APIRequest(
                             file_id=file_id,
+                            unique_id=unique_id,
                             task_id=next(task_id_generator),
                             request_json=request_json,
                             token_consumption=utils.num_tokens_from_messages(
@@ -351,6 +355,7 @@ class APIRequest:
     """Stores an API request's inputs, outputs, and other metadata. Contains a method to make an API call."""
 
     file_id: str
+    unique_id: str
     task_id: int
     request_json: dict
     token_consumption: int
@@ -403,13 +408,23 @@ class APIRequest:
                 logging.error(
                     f"Request {self.request_json} failed after all attempts. Saving errors: {self.result}"
                 )
-                append_to_jsonl([self.file_id, self.request_json, self.result],
-                                save_filepath)
+                append_to_jsonl(
+                    {
+                        'file_id': self.file_id,
+                        'chunk_id': self.unique_id,
+                        'request': self.request_json,
+                        'response': self.result
+                    }, save_filepath)
                 status_tracker.num_tasks_in_progress -= 1
                 status_tracker.num_tasks_failed += 1
         else:
-            append_to_jsonl([self.file_id, self.request_json, response],
-                            save_filepath)
+            append_to_jsonl(
+                {
+                    'file_id': self.file_id,
+                    'chunk_id': self.unique_id,
+                    'request': self.request_json,
+                    'response': response
+                }, save_filepath)
             status_tracker.num_tasks_in_progress -= 1
             status_tracker.num_tasks_succeeded += 1
             logging.debug(f"Request {self.task_id} saved to {save_filepath}")
